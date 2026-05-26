@@ -1,0 +1,15 @@
+깃 초반 세팅에관한 자료
+
+git init
+
+git add .
+
+git commit -m "내용적기"
+
+깃 홈페이지에서 레퍼지토리 만들기
+
+git branch -M main (기본 브랜치 이름을 main으로 바꿈)
+
+git remote add origin http: ... (생성된 깃허브 주소)
+
+git push -u origin main
