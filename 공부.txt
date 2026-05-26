@@ -13,3 +13,6 @@ uvicorn app.maini:app --reload
 
 api 문서페이지 (docs)
 http://127.0.0.1:8000/docs
+
+readme 미리보기 단축키
+= Ctrl + k 누른뒤 v 따로누르기

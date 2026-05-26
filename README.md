@@ -49,21 +49,32 @@ stock_platform/
 └── venv/                        # 파이썬 가상환경
 ```
 
-⚙️ 실행 방법 (How to Run)
-1. 가상환경 활성화 및 패키지 설치
-Bash
-# Windows
-.\venv\Scripts\activate
+---
 
-# 패키지 설치 (yfinance, fastapi 등)
+## ⚙️ 실행 방법 (How to Run)
+
+### 1. 가상환경 활성화 및 패키지 설치
+**Windows**
+```Bash
+.\venv\Scripts\activate
+```
+```text
+패키지 설치 (yfinance, fastapi 등)
+```
+
+```Bash
 pip install fastapi uvicorn yfinance
-2. 백엔드 서버 실행
-Bash
+```
+### 2. 백엔드 서버 실행
+```Bash
 uvicorn app.main:app --reload
 기본 API 문서 주소: http://127.0.0.1:8000/docs
+```
+---
 
-📌 주요 기능 (Key Features)
-1. 주식 실시간 분석 (/api/stocks)
-yfinance 라이브러리를 연동하여 미국/한국 주식 시장의 실시간 데이터 수집
+## 📌 주요 기능 (Key Features)
 
-종목명, 현재가, 시가총액, 52주 최고가/최저가 추출 및 가공
+### 1. 주식 실시간 분석 (/api/stocks)
+- yfinance 라이브러리를 연동하여 미국/한국 주식 시장의 실시간 데이터 수집
+
+- 종목명, 현재가, 시가총액, 52주 최고가/최저가 추출 및 가공
