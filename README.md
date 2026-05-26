@@ -47,6 +47,7 @@ stock_platform/
 │       └── router.py
 ├── frontend/                    # 프론트엔드 공간 (정적 파일 및 향후 프레임워크 전환)
 └── venv/                        # 파이썬 가상환경
+'''
 
 ⚙️ 실행 방법 (How to Run)
 1. 가상환경 활성화 및 패키지 설치
