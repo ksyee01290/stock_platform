@@ -4,7 +4,7 @@ class Stock(Base):
     __tablename__ = "stocks"
     
     id = Column(Integer, primary_key=True, index=True) # 자동으로 1씩 증가하는 고유넘버
-    ticker =- Column(String, unique=True, index=True, nullable=False) # 주식 고유이름
+    ticker = Column(String, unique=True, index=True, nullable=False) # 주식 고유이름
     name = Column(String, nullable=False) # 종목명
     current_price = Column(Float, nullable=False) # 현재가
     market_cap = Column(BigInteger, nullable=True) # 시가총액
