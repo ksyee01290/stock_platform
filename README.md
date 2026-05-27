@@ -36,8 +36,10 @@ stock_platform/
 ├── app/                         # 백엔드 핵심 소스코드
 │   ├── __init__.py
 │   ├── main.py                  # 중앙 제어 및 라우터 등록
+│   ├── database.py              # 데이터베이스
 │   ├── stocks/                  # 주식 분석 도메인
 │   │   ├── __init__.py
+│   │   ├── models.py            # 주식데이터 종류
 │   │   └── router.py
 │   ├── lotto/                   # 로또 분석 도메인 (예정)
 │   │   ├── __init__.py
