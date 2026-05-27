@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from app.stocks.router import router as stock_router
+
+from app.database import engine, Base
+from app.stocks import models
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title= "주식 분석 플랫폼")
 

@@ -1,3 +1,12 @@
+개발순서
+[1단계] 기획 및 화면 초안 (기획자/디자이너)
+   ▼
+[2단계] DB 테이블 설계 및 데이터 구조 확정 (백엔드) ◀ [실무에선 무조건 여기부터!]
+   ▼
+[3단계] 핵심 기능을 수행하는 백엔드 API 개발 (백엔드)
+   ▼
+[4단계] API 명세서(전달할 데이터 규격)를 보고 화면 연동 (프론트엔드)
+
 가상환경 세팅
 python -m venv venv
 
@@ -6,6 +15,9 @@ source venv/bin/activate = 맥 또는 Linux인경우
 
 필수 라이브러리 (fastapi, uvicorn)
 pip installl fastapi uvicorn
+
+db 라이브러리 (sqlalchemy, psycopg2-binary)
+pip installl sqlalchemy psycopg2--binary
 
 서버실행코드
 uvicorn app.maini:app --reload 
