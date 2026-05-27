@@ -1,0 +1,9 @@
+속성명	                설명	                                        반환 형식
+info	                기업 개요, 시가총액, PER, ROE 등 요약 정보 조회	  Dictionary
+dividends	            과거 배당금 지급 내역 (날짜 및 금액)	          Pandas Series
+splits	                과거 주식 분할 내역 및 비율	                     Pandas Series
+actions	                배당금과 주식 분할 이력을 합쳐서 제공	          Pandas DataFrame
+major_holders	        주요 주주(내부자, 기관 등)의 지분 보유 비율	       Pandas DataFrame
+institutional_holders	상위 기관 투자자 명단 및 보유 현황	              Pandas DataFrame
+news	                종목 관련 최근 뉴스 제목, 발행처, URL 목록	      List of Dicts
+calendar	            실적 발표일, 배당락일 등 주요 일정	              Dictionary

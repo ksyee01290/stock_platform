@@ -1,5 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, BigInteger
+from sqlalchemy import Column, Integer, String, Float, BigInteger, DateTime
+from sqlalchemy.sql import func 
 from app.database import Base
+
 class Stock(Base):
     __tablename__ = "stocks"
     
@@ -11,3 +13,5 @@ class Stock(Base):
     high_52week = Column(Float, nullable=True) # 52주 최고가
     low_52week = Column(Float, nullable=True) # 52주 최저가
     
+    # 데이터가 처음들어올때와 수정될때 자동으로 현재시간 기록
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
