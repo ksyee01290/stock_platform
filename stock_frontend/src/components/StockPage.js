@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import '../App.css';
 
 function StockPage() {
     const [ticker, setTicker] = useState('');
@@ -28,17 +29,17 @@ function StockPage() {
     };
 
     return(
-        <div style={{ padding: '20px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fafafa'}}>
+        <div className="page-box stock-theme">
             <h3> 주식 분석 구역</h3>
-            <div style={{ marginBottom: '20px' }}>
+            <div>
                 <input
                     type="text"
                     value={ticker}
                     onChange={(e) => setTicker(e.target.value.toUpperCase())}
                     placeholder="종목 입력 (예: AAPL)"
-                    style={{ padding: '8px', marginRight: '10px', textTransform: 'uppercase'}}
+                    className="search-input"
                 />
-                <button onClick={handleSearch} style={{ padding: '8px 15px', cursor: 'pointer'}}>
+                <button onClick={handleSearch} className="search-button">
                     {loading ? '조회 중...' : '조회'}
                 </button>
             </div>
@@ -46,7 +47,7 @@ function StockPage() {
             {error && <p style={{ color: 'red'}}> 에러: {error}</p>}
 
             {stockData && (
-                <div style={{ border: '1px solid #ccc', padding: '15px', borderRadius: '5px', backgroundColor: '#fff'}}>
+                <div className="result-card">
                     <h4> {stockData.data.name} ({stockData.data.ticker})</h4>
                     <p><strong>현재 가격:</strong> ${stockData.data.current_price}</p>
                     <p><strong>시가 총액:</strong> ${stockData.data.market_cap?.toLocaleString()}</p>

@@ -20,7 +20,7 @@ db 라이브러리 (sqlalchemy, psycopg2-binary)
 pip installl sqlalchemy psycopg2--binary
 
 서버실행코드
-uvicorn app.maini:app --reload 
+uvicorn app.main:app --reload 
 --reload ==코드를 수정하고 저장할때마다 서버 재시동 옵션
 
 api 문서페이지 (docs)
