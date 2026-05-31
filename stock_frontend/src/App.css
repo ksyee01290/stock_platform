@@ -62,3 +62,50 @@
   background-color: #fff;
   margin-top: 15px;
 }
+
+/* 분석 리포트 전체 감싸는 회색 상자 */
+.analysis-report-box {
+  background-color: #f0f4f8;
+  padding: 15px;
+  border-radius: 6px;
+  margin: 15px 0;
+}
+
+/* 리포트 제목 */
+.analysis-title {
+  margin: 0 0 10px 0;
+  color: #1a365d;
+}
+
+/* 리포트 내부 일반 텍스트 라인 */
+.analysis-text-line {
+  margin: 5px 0;
+}
+
+/* 등급별 동적 색상 클래스 */
+.risk-safe {
+  font-weight: bold;
+  color: #2f855a; /* 초록색 */
+}
+
+.risk-normal {
+  font-weight: bold;
+  color: #dd6b20; /* 주황색 */
+}
+
+.risk-danger {
+  font-weight: bold;
+  color: #e53e3e; /* 빨간색 */
+}
+
+/* 말풍선 형태의 가이드 코멘트 창 */
+.analysis-comment-card {
+  font-size: 14px;
+  color: #4a5568;
+  line-height: 1.5;
+  margin: 10px 0 0 0;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 4px;
+  border-left: 4px solid #4a5568;
+}

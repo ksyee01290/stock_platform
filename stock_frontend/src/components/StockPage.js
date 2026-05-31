@@ -53,6 +53,29 @@ function StockPage() {
                     <p><strong>시가 총액:</strong> ${stockData.data.market_cap?.toLocaleString()}</p>
                     <p><strong>52주 최고가:</strong> ${stockData.data.high_52week}</p>
                     <p><strong>52주 최저가:</strong> ${stockData.data.low_52week}</p>
+                    
+                    <hr />
+                    <div className="analysis-report-box">
+                        <h5 className="analysis-title">🧠 자체 위험도 분석 리포트</h5>
+                        
+                        <p className="analysis-text-line">
+                        <strong>주가 위치 점수:</strong> {stockData.score}점 / 100점
+                        </p>
+                        
+                        <p className="analysis-text-line">
+                        <strong>위험도 등급:</strong> {' '}
+                        <span className={
+                            stockData.score <= 30 ? 'risk-safe' : stockData.score <= 70 ? 'risk-normal' : 'risk-danger'
+                        }>
+                            {stockData.risk_level}
+                        </span>
+                        </p>
+                        
+                        <p className="analysis-comment-card">
+                        📢 {stockData.comment}
+                        </p>
+                    </div>
+                    
                     <hr />
                     <p style={{ fontSize: '12px', color: '#666' }}>
                         시스템 상태: {stockData.message}
