@@ -37,6 +37,9 @@ stock_platform/
 │   ├── __init__.py
 │   ├── main.py                  # 중앙 제어 및 라우터 등록
 │   ├── database.py              # 데이터베이스
+│   ├── tasks/                   # [배치 도메인] 백그라운드 자동화 작업 모음 공간
+│   │   ├── __init__.py
+│   │   ├── stock_tasks.py       # [배치 엔진] 주기적인 주식 지표 자동 갱신 및 DB 최신화
 │   ├── stocks/                  # 주식 분석 도메인
 │   │   ├── __init__.py
 │   │   ├── models.py            # 주식데이터 종류
