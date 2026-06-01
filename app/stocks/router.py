@@ -1,3 +1,8 @@
+"""
+[주식 분석 도메인 - 엔드포인트 라우터]
+- Frontend(React/Next.js)의 API 요청을 수신하는 문지기 역할을 합니다.
+- 3단계 하이브리드 데이터 관리 정책(DB 캐싱 + 5초 방어막 + 실시간 가격 패치)의 전체 흐름을 제어합니다.
+"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone # 시간계산 라이브러리

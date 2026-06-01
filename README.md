@@ -20,7 +20,7 @@ FastAPI 백엔드를 기반으로 한 실시간 주식 데이터 조회, 로또 
 ### Backend
 - **Framework:** FastAPI (Python)
 - **Database:** PostgreSQL
-- **Libraries:** uvicorn, yfinance
+- **Libraries:** uvicorn, yfinance, APScheduler(Background Task)
 
 ### Frontend (Planned)
 - React.js ➡️ Next.js (App Router)
@@ -40,13 +40,13 @@ stock_platform/
 │   ├── stocks/                  # 주식 분석 도메인
 │   │   ├── __init__.py
 │   │   ├── models.py            # 주식데이터 종류
-│   │   └── router.py
+│   │   └── router.py            # [API 라우터] 주식 조회 및 하이브리드 로직 제어
 │   ├── lotto/                   # 로또 분석 도메인 (예정)
 │   │   ├── __init__.py
-│   │   └── router.py
+│   │   └── router.py            # [API 라우터] 로또 번호 분석 및 통계 API
 │   └── weather/                 # 날씨 정보 도메인 (예정)
 │       ├── __init__.py
-│       └── router.py
+│       └── router.py            # [API 라우터] 위치 기반 날씨 정보 연동 API
 ├── frontend/                    # 프론트엔드 공간 (정적 파일 및 향후 프레임워크 전환)
 └── venv/                        # 파이썬 가상환경
 ```
@@ -76,7 +76,19 @@ uvicorn app.main:app --reload
 
 ## 📌 주요 기능 (Key Features)
 
-### 1. 주식 실시간 분석 (/api/stocks)
-- yfinance 라이브러리를 연동하여 미국/한국 주식 시장의 실시간 데이터 수집
+### 1. 주식 실시간 하이브리드 분석 및 트래픽 최적화 (/api/stocks)
+- 3단계 하이브리드 데이터 관리: - [1단계 DB 조회]: 요청 시 먼저 DB에서 데이터를 조회합니다.
 
-- 종목명, 현재가, 시가총액, 52주 최고가/최저가 추출 및 가공
+    - [2단계 유효시간 & 5초 캐싱 방어막]: 1시간 이내 데이터가 있다면 시총, 52주 최고/최저가 등 무거운 지표는 DB 값을 재활용하되, 현재 주가 딱 하나만 실시간 패치해 옵니다. 악의적인 연타 시 외부 API 차단을 막기 위해 5초 이내 중복 요청은 DB 데이터를 즉시 반환하는 방어막(Rate Limit)이 작동합니다.
+
+    - [3단계 실시간 수집]: 데이터가 없거나 1시간이 지난 경우 전체 정보를 새로 긁어와 갱신합니다.
+
+- 백그라운드 배치 시스템 (APScheduler): 서버가 구동되는 동안 백그라운드에서 주기적으로 DB 내 종목들을 자동 최신화하여 유저 검색 시 0.01초 만에 응답할 수 있도록 부하를 분산합니다.
+
+### 2. 로또 번호 분석(/api/lotto - 예정)
+
+- 역대 로또 당첨 번호 데이터를 기반으로 한 통계 및 분석 기능 제공
+
+### 3. 날씨 정보 제공(/api/weather - 예정)
+
+- 위치 기반 실시간 날씨 데이터 및 예보 정보 연동
