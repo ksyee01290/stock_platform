@@ -5,9 +5,21 @@ from app.stocks.router import router as stock_router
 from app.database import engine, Base
 from app.stocks import models
 
+from contextlib import asynccontextmanager
+from app.tasks.stock_tasks import start_scheduler, shutdown_scheduler
+
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title= "주식 분석 플랫폼")
+# 스케줄러를 켜고 끄는 관리자 정의
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # [서버온] 백그라운드 스케줄러 가동
+    start_scheduler()
+    yield
+    # [서버다운] 스케줄러도 메모리 누수 없이 종료
+    shutdown_scheduler()
+
+app = FastAPI(title= "주식 분석 플랫폼", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
