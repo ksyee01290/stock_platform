@@ -45,6 +45,29 @@ def get_stock_analysis(ticker: str, db:Session = Depends(get_db)):
         time_difference = current_time - stock_updated_time
         
         if time_difference < timedelta(hours=1): 
+            
+            # 연타방어막 시동!!
+            if time_difference < timedelta(seconds=5):
+                print(f"[방어막 작동] {ticker} 요청이 너무 단시간에 반복되어 캐싱된 데이터를 반환합니다.")
+                score, risk, comment = calculate_stock_score(existing_stock.current_price, existing_stock.high_52week, existing_stock.low_52week)
+                return{
+                    "status": "성공 (방어막 캐싱)",
+                    "massage": "디도스 방지를 위해 5초 이내 반복 요청은 저장된 데이터를 반환합니다.",
+                    "data": existing_stock,
+                    "score": score,
+                    "risk_level": risk,
+                    "comment": comment               
+                }
+            try:
+                live_info = yf.Ticker(ticker).info
+                live_price = live_info.get("currentPrice") or live_info.get("regularMarketprice") or existing_stock.current_price
+                
+                # 실시간 현재가로 DB 업데이트
+                existing_stock.current_price = float(live_price)
+                db.commit()
+            except Exception as e:
+                print(f"[실시간 주가 패치 실패] {ticker} 실시간 가격 호출 실패, DB 값 활용: {str(e)}")
+                
             score, risk, comment = calculate_stock_score(existing_stock.current_price, existing_stock.high_52week, existing_stock.low_52week)
             return {
                 "status": "성공 (DB 최신 데이터)",
