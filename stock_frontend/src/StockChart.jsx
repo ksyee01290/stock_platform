@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   ResponsiveContainer,
@@ -16,10 +16,16 @@ const StockChart = ({ ticker }) => {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // 마지막으로 서버에 요청한 종목 코드 기억
+  const lastFetchedTicker = useRef("");
+
   useEffect(() => {
     if (!ticker) return;
+    if (lastFetchedTicker.current === ticker) return;
 
     setLoading(true);
+    // 요청 보내는 순간 창고에 현재 종목을 박제
+    lastFetchedTicker.current =ticker;
     axios
       .get(`http://127.0.0.1:8000/api/stocks/${ticker}/history`)
       .then((response) => {
@@ -33,6 +39,7 @@ const StockChart = ({ ticker }) => {
       .catch((error) => {
         console.error("데이터를 가져오는 중 에러 발생:", error);
         setLoading(false);
+        lastFetchedTicker.current = "";
       });
   }, [ticker]);
 
