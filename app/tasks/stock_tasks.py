@@ -49,9 +49,9 @@ def update_top_stocks_batch():
 scheduler = BackgroundScheduler()
 
 def start_scheduler():
-    scheduler.add_job(update_top_stocks_batch, 'interval', minutes=1, id='sync_stocks_job')
+    scheduler.add_job(update_top_stocks_batch, 'cron', hour=7, minute=0, id='sync_stocks_job')
     scheduler.start()
-    print("[Scheduler] 백그라운드 주식 배치 스케줄러가 성공적으로 시작되었습니다.")
+    print("[Scheduler] 매일 아침 7시 정기 배치를 위한 크론 스케줄러 시동")
 
 def shutdown_scheduler():
     scheduler.shutdown()
