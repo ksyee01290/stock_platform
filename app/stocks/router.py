@@ -5,7 +5,10 @@
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone # 시간계산 라이브러리
+from datetime import date, datetime, timedelta, timezone
+from typing import List
+from pydantic import BaseModel
+
 import yfinance as yf
 import threading
 
@@ -16,6 +19,34 @@ router = APIRouter()
 
 stock_lock = threading.Lock()
 
+class StockHistoryResponse(BaseModel):
+    list_date: date
+    open_price: float
+    high_price: float
+    low_price: float
+    close_price: float
+    volume: int
+    per: float | None
+    pbr: float | None
+    
+    class Config:
+        from_attributes = True
+
+@router.get("/{ticker}/history", response_model=List[StockHistoryResponse])
+def get_stock_history(ticker: str, db: Session = Depends(get_db)):
+    
+    today = date.today()
+    one_year_ago = today - timedelta(days=365)
+    
+    # SELECT * FROM stock_histories WHERE ticker = :ticker AND list_date >= :one_year_ago ORDER BY list_date ASC;
+    history_data = db.query(models.StockHistory)\
+        .filter(models.StockHistory.ticker == ticker)\
+        .filter(models.StockHistory.list_date >= one_year_ago)\
+        .order_by(models.StockHistory.list_date.asc())\
+        .all()
+        
+    return history_data        
+        
 def calculate_stock_score(current_price, high_52week, low_52week):
     try:
         if not high_52week or not low_52week or high_52week == low_52week:

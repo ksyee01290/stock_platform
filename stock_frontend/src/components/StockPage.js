@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import '../App.css';
 
-function StockPage() {
+function StockPage({ renderChart }) {
     const [ticker, setTicker] = useState('');
     const [stockData, setStockData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -80,6 +80,7 @@ function StockPage() {
                     <p style={{ fontSize: '12px', color: '#666' }}>
                         시스템 상태: {stockData.message}
                     </p>
+                    {renderChart && renderChart(stockData.data.ticker)}
                 </div>
             )}
         </div>

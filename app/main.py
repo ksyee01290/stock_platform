@@ -8,6 +8,10 @@ from app.stocks import models
 from contextlib import asynccontextmanager
 from app.tasks.stock_tasks import start_scheduler, shutdown_scheduler
 
+#  테이블구조 날려버리기
+# Base.metadata.drop_all(bind=engine)
+
+#  테이블구조 새로생성
 Base.metadata.create_all(bind=engine)
 
 # 스케줄러를 켜고 끄는 관리자 정의
