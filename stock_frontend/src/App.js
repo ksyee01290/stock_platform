@@ -38,11 +38,7 @@ function App() {
         {/* 주식 분석 탭 활성화 시 */}
         {currentTab === 'stock' && (
           <div>
-            <StockPage renderChart={(tickerValue) => (
-              <div style={{ marginTop: '30px' }}>
-                <StockChart ticker={tickerValue} />
-              </div>
-            )} />
+            <StockPage />
           </div>
         )}
 

@@ -12,55 +12,29 @@ import {
 } from "recharts";
 import "./App.css"; 
 
-const StockChart = ({ ticker }) => {
-  const [chartData, setChartData] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  // 마지막으로 서버에 요청한 종목 코드 기억
-  const lastFetchedTicker = useRef("");
-
-  useEffect(() => {
-    if (!ticker) return;
-    if (lastFetchedTicker.current === ticker) return;
-
-    setLoading(true);
-    // 요청 보내는 순간 창고에 현재 종목을 박제
-    lastFetchedTicker.current =ticker;
-    axios
-      .get(`http://127.0.0.1:8000/api/stocks/${ticker}/history`)
-      .then((response) => {
-        const formattedData = response.data.map((item) => ({
-          ...item,
-          displayDate: item.list_date.substring(5),
-        }));
-        setChartData(formattedData);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("데이터를 가져오는 중 에러 발생:", error);
-        setLoading(false);
-        lastFetchedTicker.current = "";
-      });
-  }, [ticker]);
-
-  if (!ticker){
-    return <div className="chart-loading">상단에서 종목을 검색하시면 최근 1년 주가 추이 그래프가 출력됩니다.</div>;
+// 부모(StockPage)가 API로 이미 받아온 historyData를 받음
+const StockChart = ({ ticker, historyData }) => {
+  
+  // 데이터가 없거나 넘어오는 중일 때 예외 처리 구역
+  if (!historyData || historyData.length === 0) {
+    return <div className="chart-loading">최근 1년 주가 데이터가 존재하지 않습니다.</div>;
   }
 
-  if (loading) {
-    return <div className="chart-loading">10년 치 시계열 창고에서 최근 1년 치 주가를 정밀 조회 중...</div>;
-  }
+  const formattedData = historyData.map((item) => ({
+    ...item,
+    displayDate: item.list_date.substring(5), // 월-일만 잘라내기
+  }));
 
   return (
     <div className="chart-card-container">
       <div className="chart-header">
         <h2 className="chart-title">{ticker} 최근 1년 주가 추이</h2>
-        <span className="chart-subtitle">총 {chartData.length} 거래일 데이터</span>
+        <span className="chart-subtitle">총 {formattedData.length} 거래일 데이터</span>
       </div>
 
       <div className="chart-wrapper">
         <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
+          <LineChart data={formattedData} margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="displayDate" stroke="#888888" fontSize={12} tickLine={false} />
             <YAxis domain={["dataMin - 5", "dataMax + 5"]} stroke="#888888" fontSize={12} tickLine={false} />

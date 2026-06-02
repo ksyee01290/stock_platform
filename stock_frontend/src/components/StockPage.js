@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+import StockChart from '../StockChart';
 import '../App.css';
 
 function StockPage({ renderChart }) {
@@ -13,20 +15,20 @@ function StockPage({ renderChart }) {
         setLoading(true);
         setError(null);
         setStockData(null);
+        
 
-        try{
-            const response = await fetch(`http://127.0.0.1:8000/api/stocks/analysis/${ticker}`);
-            if (!response.ok) {
-                throw new Error('주식 데이터를 가져오는데 실패했습니다.');
-            }
-            const result = await response.json();
-            setStockData(result);
-        } catch  (err){
-            setError(err.message);
-        } finally{
+        try {
+            const response = await axios.get(`http://127.0.0.1:8000/api/stocks/integrated/${ticker}`);
+            setStockData(response.data);
+        } catch (err) {
+            console.error(err);
+            setError('주식 데이터를 가져오는데 실패했습니다.');
+        } finally {
             setLoading(false);
         }
     };
+
+    const info = stockData?.data ? stockData.data : stockData;
 
     return(
         <div className="page-box stock-theme">
@@ -39,20 +41,21 @@ function StockPage({ renderChart }) {
                     placeholder="종목 입력 (예: AAPL)"
                     className="search-input"
                 />
-                <button onClick={handleSearch} className="search-button">
+                <button onClick={handleSearch} className="search-button" disabled={loading}>
                     {loading ? '조회 중...' : '조회'}
                 </button>
             </div>
 
             {error && <p style={{ color: 'red'}}> 에러: {error}</p>}
+            {loading && <div className="chart-loading">통합 서버 창고에서 정밀 데이터 패치 중...</div>}
 
-            {stockData && (
+            {stockData && info && (
                 <div className="result-card">
-                    <h4> {stockData.data.name} ({stockData.data.ticker})</h4>
-                    <p><strong>현재 가격:</strong> ${stockData.data.current_price}</p>
-                    <p><strong>시가 총액:</strong> ${stockData.data.market_cap?.toLocaleString()}</p>
-                    <p><strong>52주 최고가:</strong> ${stockData.data.high_52week}</p>
-                    <p><strong>52주 최저가:</strong> ${stockData.data.low_52week}</p>
+                    <h4> {info.name || ticker} ({info.ticker || ticker})</h4>
+                    <p><strong>현재 가격:</strong> ${info.current_price || 'N/A'}</p>
+                    <p><strong>시가 총액:</strong> ${info.market_cap ? info.market_cap.toLocaleString() : 'N/A'}</p>
+                    <p><strong>52주 최고가:</strong> ${info.high_52week || 'N/A'}</p>
+                    <p><strong>52주 최저가:</strong> ${info.low_52week || 'N/A'}</p>
                     
                     <hr />
                     <div className="analysis-report-box">
@@ -67,21 +70,26 @@ function StockPage({ renderChart }) {
                         <span className={
                             stockData.score <= 30 ? 'risk-safe' : stockData.score <= 70 ? 'risk-normal' : 'risk-danger'
                         }>
-                            {stockData.risk_level}
+                            {stockData.risk_level || '분석 중'}
                         </span>
                         </p>
                         
                         <p className="analysis-comment-card">
-                        📢 {stockData.comment}
+                            {stockData.comment || '데이터 분석 완료'}
                         </p>
                     </div>
                     
                     <hr />
                     <p style={{ fontSize: '12px', color: '#666' }}>
-                        시스템 상태: {stockData.message}
+                        시스템 상태: {stockData.message || '정상'}
                     </p>
-                    {renderChart && renderChart(stockData.data.ticker)}
+                    <div style={{ marginTop: '30px' }}>
+                        <StockChart 
+                            ticker={info.ticker || ticker} 
+                            historyData={stockData.history} 
+                        />
                 </div>
+              </div>
             )}
         </div>
     );
