@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import StockChart from '../StockChart';
 import '../App.css';
@@ -9,17 +9,46 @@ function StockPage({ renderChart }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    // 최근 검색어 및 인기검색어
+    const [recentSearches, setRecentSearches] = useState([]);
+    const [trendingSearches, setTrendingSearches] = useState([]);
+
+    // 백엔드 사이드바 통계 데이터
+    const fetchSidebarData = async () =>{
+        try{
+            const response = await axios.get('http://127.0.0.1:8000/api/stocks/search/dashboard-init');
+            
+            console.log("통합 대시보드 원본데이터:", response.data);
+
+            const { recent, trending } = response.data;
+            if (recent && Array.isArray(recent)) setRecentSearches(recent);
+            if (trending && Array.isArray(trending)) setTrendingSearches(trending);
+        } catch (err) {
+            console.error('통계 데이터를 가져오는데 실패했습니다.', err);
+        }
+    };
+
+    useEffect(()=>{
+        fetchSidebarData();
+    }, []);
+
+    // 기존 유지 및 수정
     const handleSearch = async () => {
         if (!ticker) return alert('종목을 입력해주세요 (예: AAPL)');
+        await executeSearch(ticker);
+    };
 
+    // 최근 검색어나 인기 순위를 클릭했을때도 동작할 공통 검색 로직
+    const executeSearch = async(targetTicker) =>{
         setLoading(true);
         setError(null);
         setStockData(null);
         
-
         try {
             const response = await axios.get(`http://127.0.0.1:8000/api/stocks/integrated/${ticker}`);
             setStockData(response.data);
+
+            fetchSidebarData();
         } catch (err) {
             console.error(err);
             setError('주식 데이터를 가져오는데 실패했습니다.');
@@ -91,6 +120,58 @@ function StockPage({ renderChart }) {
                 </div>
               </div>
             )}
+            <div className="dashboard-stats-wrapper">
+                {/* 최근 검색한 종목 */}
+                <div className="dashboard-stat-box">
+                    <h5 className="dashboard-stat-title"> 최근 검색 종목</h5>
+                    <div>
+                        {recentSearches.length === 0 ? (
+                            <p className="dashboard-no-data">검색 기록이 없습니다.</p>
+                        ) : (
+                            recentSearches.map((item,idx) => (
+                                <span
+                                    key={idx}
+                                    onClick={() => {
+                                        setTicker(item.ticker);
+                                        executeSearch(item.ticker);
+                                    }}
+                                    className="recent-ticker-badge"
+                                
+                                >
+                                    {item.ticker}
+                                </span>
+                            ))
+                        )}
+                    </div>
+                </div>
+                
+                {/* 실시간 인기 순위 */}
+                <div className="dashboard-stat-box">
+                    <h5 className="dashboard-stat-title">실시간 인기 순위</h5>
+                    <ul className="trending-rank-list">
+                        {trendingSearches.length === 0 ? (
+                            <p className="dashboard-no-data">순위 데이터가 없습니다.</p>
+                        ) : (
+                            trendingSearches.map((item, index) => (
+                                <li
+                                    key={index}
+                                    onClick={() => {
+                                        setTicker(item.ticker);
+                                        executeSearch(item.ticker);
+                                    }}
+                                    className="trending-rank-item"
+                                >
+                                    <div>
+                                        <span className="rank-number">{index + 1}</span>
+                                        <span className="rank-ticker">{item.ticker}</span>
+                                    </div>
+                                    <span className="rank-count">{item.search_count}회</span>
+                                </li>
+                            ))
+                        )}
+                    </ul>
+                </div>
+            </div>
         </div>
     );
 }

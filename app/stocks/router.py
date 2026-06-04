@@ -303,3 +303,12 @@ def get_watchlist(db: Session = Depends(get_db)):
          }
          for item in results
      ]
+    
+@router.get("/search/dashboard-init")
+def get_dashboard_init(db: Session = Depends(get_db)):
+    recent = get_recent_searches(db)
+    trending = get_trending_searches(db)
+    return {
+        "recent": recent,
+        "trending": trending
+    }
