@@ -1,7 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 import yfinance as yf
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database import SessionLocal
 from app.stocks import models
@@ -29,7 +29,7 @@ def update_top_stocks_batch():
                 stock.high_52week = info.get("fiftyTwoWeekHigh") or stock.high_52week
                 stock.low_52week = info.get("fiftyTwoWeekLow") or stock.low_52week
                 
-                stock.updated_at = datetime.utcnow()
+                stock.updated_at = datetime.now(timezone.utc)
                 
                 print(f"[Batch] {stock.ticker} 기본 정보 갱신 완료")
             except Exception as item_error:
@@ -49,9 +49,11 @@ def update_top_stocks_batch():
 scheduler = BackgroundScheduler()
 
 def start_scheduler():
-    scheduler.add_job(update_top_stocks_batch, 'cron', hour=7, minute=0, id='sync_stocks_job')
+    scheduler.add_job(update_top_stocks_batch, 'interval', minutes=10, id='sync_stocks_job')
+    # scheduler.add_job(update_top_stocks_batch, 'cron', hour=7, minute=0, id='sync_stocks_job')
     scheduler.start()
-    print("[Scheduler] 매일 아침 7시 정기 배치를 위한 크론 스케줄러 시동")
+    print("[Scheduler] 백그라운드 주식 배치 스케줄러가 성공적으로 시작되었습니다.")
+    # print("[Scheduler] 매일 아침 7시 정기 배치를 위한 크론 스케줄러 시동")
 
 def shutdown_scheduler():
     scheduler.shutdown()

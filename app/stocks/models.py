@@ -18,7 +18,6 @@ class Stock(Base):
     high_52week = Column(Float, nullable=True) # 52주 최고가
     low_52week = Column(Float, nullable=True) # 52주 최저가
     
-    # 데이터가 처음들어올때와 수정될때 자동으로 현재시간 기록
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
 class StockHistory(Base):
@@ -49,3 +48,26 @@ class StockHistory(Base):
     __table_args__ = (
         Index('idx_ticker_list_date', 'ticker', 'list_date'),
     )
+    
+class Watchlist(Base):
+    """
+    [즐겨찾기 테이블]
+    -유저 관심종목 등록 관리
+    -추후 로그인 기능 도입시 user_id 투입
+    """
+    __tablename__ = "watchlists"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+class SearchHistory(Base):
+    """
+    [검색 히스토리 테이블]
+    -유저가 integrated API를 호출할 때마다 검색 기록을 로그처럼 쌓음
+    """
+    __tablename__ = "search_histories"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    ticker = Column(String, nullable=False, index=True)
+    searched_at = Column(DateTime(timezone=True), server_default=func.now())
