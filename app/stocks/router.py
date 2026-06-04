@@ -235,7 +235,7 @@ def get_trending_searches(db: Session = Depends(get_db)):
         func.count(models.SearchHistory.ticker).label("search_count")
     )\
     .group_by(models.SearchHistory.ticker)\
-    .order_aby(func.count(models.SearchHistory.ticker).desc())\
+    .order_by(func.count(models.SearchHistory.ticker).desc())\
     .limit(10)\
     .all()
     
