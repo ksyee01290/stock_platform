@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import StockPage from './components/StockPage';
-import StockChart from './StockChart';
 import './App.css';
 
 function App() {
   const [currentTab, setCurrentTab] = useState('stock');
 
   return (
-    <div className="container">
+    <div className={`container ${currentTab === 'stock' ? 'wide-layout' : ''}`}>
       <h1>멀티 분석 플랫폼</h1>
 
       <div className="tab-bar">
