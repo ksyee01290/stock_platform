@@ -1,4 +1,5 @@
-.container{
+/* 기본 컨테이너 */
+.container {
   padding: 20px;
   max-width: 600px;
   margin: 0 auto;
@@ -6,208 +7,241 @@
   transition: max-width 0.3s ease;
 }
 
+/* 주식 분석 구역 활성화 시 화면 확장 */
 .container.wide-layout {
-  max-width: 1300px;
+  max-width: 1350px;
 }
 
-/* 상단 탭 바 및 버튼 스타일*/
-.tab-bar{
+/* 와이드 레이아웃일 때 상단 타이틀 및 탭바 중앙 정렬 */
+.container.wide-layout h1 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #1a202c;
+  font-weight: 800;
+}
+.container.wide-layout .tab-bar {
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+/* 상단 탭 바 및 버튼 스타일 */
+.tab-bar {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
 }
 .tab-button {
-  padding: 10px 20px;
+  padding: 10px 22px;
   cursor: pointer;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-weight: bold;
-  transition: background-color 0.2s;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  background-color: #ffffff;
+  color: #4a5568;
+  transition: all 0.2s ease;
+}
+.tab-button.active {
+  background-color: #3182ce;
+  color: #ffffff;
+  border-color: #3182ce;
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.2);
+}
+.tab-button:hover:not(.active) {
+  background-color: #f7fafc;
+  border-color: #cbd5e0;
 }
 
 /* 주식, 날씨, 로또 각 페이지의 큰 테두리 상자 */
 .page-box {
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   margin-top: 20px;
 }
-
-.stock-theme { background-color: #fafafa; }
+.stock-theme { background-color: #f8fafc; } /* 약간 더 정돈된 그레이시 블루 백그라운드 */
 .weather-theme { background-color: #e8f5e9; }
 .lotto-theme { background-color: #fff3e0; }
 
 /* 입력창과 조회 버튼 */
 .search-input {
-  padding: 8px;
-  margin-right: 10px;
+  padding: 12px 16px;
+  margin-right: 8px;
+  width: 240px;
+  font-size: 14px;
+  font-weight: 600;
   text-transform: uppercase;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease;
 }
-
+.search-input:focus {
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15);
+}
 .search-button {
-  padding: 8px 15px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: bold;
   cursor: pointer;
-  background-color: #333;
+  background-color: #1a202c;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
-
 .search-button:hover {
-  background-color: #555;
+  background-color: #2d3748;
+  transform: translateY(-1px);
 }
 
-/* 주식 결과창 카드 */
-.result-card {
-  border: 1px solid #ccc;
-  padding: 15px;
-  border-radius: 5px;
-  background-color: #fff;
-  margin-top: 15px;
-}
-
-/* 분석 리포트 전체 감싸는 회색 상자 */
-.analysis-report-box {
-  background-color: #f0f4f8;
-  padding: 15px;
-  border-radius: 6px;
-  margin: 15px 0;
-}
-
-/* 리포트 제목 */
-.analysis-title {
-  margin: 0 0 10px 0;
-  color: #1a365d;
-}
-
-/* 리포트 내부 일반 텍스트 라인 */
-.analysis-text-line {
-  margin: 5px 0;
-}
-
-/* 등급별 동적 색상 클래스 */
-.risk-safe {
-  font-weight: bold;
-  color: #2f855a; /* 초록색 */
-}
-
-.risk-normal {
-  font-weight: bold;
-  color: #dd6b20; /* 주황색 */
-}
-
-.risk-danger {
-  font-weight: bold;
-  color: #e53e3e; /* 빨간색 */
-}
-
-/* 말풍선 형태의 가이드 코멘트 창 */
-.analysis-comment-card {
-  font-size: 14px;
-  color: #4a5568;
-  line-height: 1.5;
-  margin: 10px 0 0 0;
-  background-color: #fff;
-  padding: 10px;
-  border-radius: 4px;
-  border-left: 4px solid #4a5568;
-}
-
-/* StockChart.css */
-
-/* 차트 전체를 감싸는 카드 컨테이너 */
-.chart-card-container {
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 20px;
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  box-sizing: border-box;
-}
-
-/* 상단 헤더 영역 (타이틀과 데이터 개수) */
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.chart-title {
-  margin: 0;
-  color: #111111;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.chart-subtitle {
-  font-size: 14px;
-  color: #666666;
-  font-weight: 500;
-}
-
-/* 리액트 차트가 그려지는 실제 영역 */
-.chart-wrapper {
-  width: 100%;
-  height: 400px;
-}
-
-/* 로딩 애니메이션 및 메시지 영역 */
-.chart-loading {
-  text-align: center;
-  padding: 50px;
-  color: #666666;
-  font-size: 16px;
-  font-weight: bold;
-}
-
-/* StockPage 하단 통계 대시보드 레이아웃 */
-
-/* 좌측 메인 영역과 우측 사이드바를 나란히 가로 배치 */
+/* 2단 분할 가로 메인 레이아웃 */
 .stock-main-layout {
   display: flex;
   gap: 25px;
-  margin-top: 20px;
+  margin-top: 24px;
   align-items: flex-start;
 }
-
-/*  좌측 메인 구역: 검색 결과 카드 및 차트 (75% 너비 차지) */
 .stock-left-content {
   flex: 3;
   width: 100%;
 }
-
-/*  우측 사이드바 구역: 최근 검색 및 실시간 순위 통계 (25% 너비 차지) */
 .stock-right-sidebar {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-width: 260px;
+  min-width: 280px;
 }
 
-/* 통계 상자 카드 디자인 개편 */
-.dashboard-stat-box {
+/* 주식 결과창 카드 - 깔끔한 인포그래픽 그리드 스타일 적용 */
+.result-card {
+  border: none;
+  padding: 28px;
+  border-radius: 16px;
   background-color: #ffffff;
-  padding: 18px;
-  border-radius: 8px;
-  border: 1px solid #edf2f7;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  margin-top: 0;
+}
+.result-card h4 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1a202c;
+  margin-top: 0;
+  margin-bottom: 20px;
 }
 
-.dashboard-stat-title {
-  margin: 0 0 12px 0;
+/* 주식 디테일 요소를 2열 격자로 배치하여 세로 스크롤 최소화 */
+.stock-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 30px;
+  margin-bottom: 20px;
+}
+.stock-info-grid p {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dashed #edf2f7;
+  padding-bottom: 8px;
   font-size: 14px;
   color: #4a5568;
-  border-bottom: 2px solid #edf2f7;
-  padding-bottom: 6px;
+}
+.stock-info-grid p strong {
+  color: #718096;
+  font-weight: 500;
+}
+
+/* 분석 리포트 전체 감싸는 상자 */
+.analysis-report-box {
+  background-color: #f7fafc;
+  padding: 20px;
+  border-radius: 12px;
+  margin: 20px 0;
+  border: 1px solid #e2e8f0;
+}
+.analysis-title {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2d3748;
+}
+.analysis-text-line {
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+/* 등급별 동적 색상 클래스 */
+.risk-safe { font-weight: bold; color: #2f855a; }
+.risk-normal { font-weight: bold; color: #dd6b20; }
+.risk-danger { font-weight: bold; color: #e53e3e; }
+
+/* 말풍선 형태의 가이드 코멘트 창 */
+.analysis-comment-card {
+  font-size: 14px;
+  color: #2d3748;
+  line-height: 1.6;
+  margin-top: 12px;
+  background-color: #ffffff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 4px solid #3182ce;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+}
+
+/* 차트 전체 카드 컨테이너 스타일 유지 및 튜닝 */
+.chart-card-container {
+  width: 100%;
+  padding: 20px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
+  box-sizing: border-box;
+}
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.chart-title {
+  margin: 0;
+  color: #111111;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.chart-subtitle {
+  font-size: 13px;
+  color: #666666;
+}
+.chart-wrapper {
+  width: 100%;
+  height: 380px;
+}
+.chart-loading {
+  text-align: center;
+  padding: 50px;
+  color: #666666;
+  font-size: 15px;
   font-weight: bold;
 }
 
+/* 우측 사이드바 통계 상자 */
+.dashboard-stat-box {
+  background-color: #ffffff;
+  padding: 22px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+.dashboard-stat-title {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: #1a202c;
+  border-bottom: 2px solid #f7fafc;
+  padding-bottom: 10px;
+  font-weight: 700;
+}
 .dashboard-no-data {
   color: #a0aec0;
   font-size: 12px;
@@ -217,19 +251,20 @@
 /* 최근 검색어 배지 */
 .recent-ticker-badge {
   display: inline-block;
-  background-color: #e2e8f0;
-  padding: 4px 8px;
-  border-radius: 15px;
+  background-color: #edf2f7;
+  padding: 6px 12px;
+  border-radius: 20px;
   margin: 4px;
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 700;
   cursor: pointer;
   color: #4a5568;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
-
 .recent-ticker-badge:hover {
-  background-color: #cbd5e0;
+  background-color: #3182ce;
+  color: #ffffff;
+  transform: scale(1.05);
 }
 
 /* 인기 순위 리스트 */
@@ -238,37 +273,63 @@
   padding: 0;
   margin: 0;
 }
-
 .trending-rank-item {
   display: flex;
   justify-content: space-between;
-  padding: 8px 4px;
-  border-bottom: 1px solid #edf2f7;
+  align-items: center;
+  padding: 11px 6px;
+  border-bottom: 1px solid #f7fafc;
   font-size: 13px;
   cursor: pointer;
+  border-radius: 6px;
   transition: background-color 0.1s ease;
 }
-
+.trending-rank-item:hover {
+  background-color: #f8fafc;
+}
 .trending-rank-item:last-child {
   border-bottom: none;
 }
+.rank-number { font-weight: bold; color: #3182ce; margin-right: 8px; }
+.rank-ticker { font-weight: 600; color: #2d3748; }
+.rank-count { color: #718096; font-size: 11px; }
 
-.trending-rank-item:hover {
-  background-color: #f7fafc;
+/* ==========================================================================
+   🧹 [인라인 스타일 100% 분리 교정] 코드 청소부 스타일
+   ========================================================================== */
+
+/* 검색 입력 영역의 마진 분리 */
+.search-bar-zone {
+  margin-bottom: 20px;
 }
 
-.rank-number {
-  font-weight: bold;
-  color: #3182ce;
-  margin-right: 8px;
+/* 좌측 대시보드 컴포넌트 수직 스택 컨테이너 */
+.dashboard-left-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.rank-ticker {
-  font-weight: 600;
-  color: #2d3748;
+/* 빈 화면 안내 문구 센터링 */
+.empty-dashboard-state {
+  margin-top: 0 !important;
+  padding: 40px !important;
+  text-align: center;
+  color: #a0aec0;
 }
 
-.rank-count {
-  color: #718096;
+/* 시스템 하단 미세 상태 텍스트 */
+.system-status-text {
   font-size: 11px;
+  color: #94a3b8;
+  margin: 10px 0 0 0 !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+
+/* 에러 텍스트 스타일 경량화 */
+.error-text-message {
+  color: #e53e3e;
+  font-weight: 600;
+  margin: 10px 0;
 }
