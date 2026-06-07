@@ -3,7 +3,7 @@
 - Frontend(React/Next.js)의 API 요청을 수신하는 문지기 역할을 합니다.
 - 3단계 하이브리드 데이터 관리 정책(DB 캐싱 + 5초 방어막 + 실시간 가격 패치)의 전체 흐름을 제어합니다.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date, datetime, timedelta, timezone
@@ -38,6 +38,26 @@ def calculate_stock_score(current_price, high_52week, low_52week):
 def get_stock_history(ticker: str, db: Session = Depends(get_db)):
     ticker = ticker.upper() # 대문자 변환 (aapl -> AAPL)
     
+    existing_stock = db.query(models.Stock).filter(models.Stock.ticker == ticker).first()
+    
+    if existing_stock:
+        current_time = datetime.now()
+        stock_updated_time = existing_stock.updated_at
+        
+        if stock_updated_time.tzinfo is not None:
+            stock_updated_time = stock_updated_time.replace(tzinfo=None)
+            
+        time_difference = current_time - stock_updated_time
+        
+        print(f"[{ticker} 시간 검증] 현재시간: {current_time} | DB시간: {stock_updated_time} | 차이(초): {time_difference.total_seconds()}초")
+        
+        if 0 <= time_difference.total_seconds() < 1:
+            print(f"[방어막 발동] {ticker} - {time_difference.total_seconds()} 5초 만에 재요청되었습니다.")
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="과도한 연타가 감지되었습니다. 5초 후 다시 시도해주세요"
+            )
+    
     try:
         search_log = models.SearchHistory(ticker=ticker)
         db.add(search_log)
@@ -64,45 +84,18 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
         existing_stock = db.query(models.Stock).filter(models.Stock.ticker == ticker).first()
         
         if existing_stock:    
-            current_time = datetime.now(timezone.utc)
-            stock_updated_time = existing_stock.updated_at
-            
-            if stock_updated_time.tzinfo is None:
-                stock_updated_time = stock_updated_time.replace(tzinfo=timezone.utc)
-                
+            current_time = datetime.now()
+            stock_updated_time = existing_stock.updated_at.replace(tzinfo=None) if existing_stock.updated_at.tzinfo else existing_stock.updated_at
             time_difference = current_time - stock_updated_time
-            
-
-            # [1단계] 연타 방어막 작동 구역
-            if time_difference < timedelta(seconds=5):
-                print(f"[방어막 작동] {ticker} 요청이 너무 단시간에 반복되어 캐싱된 데이터를 반환합니다.")
-                score, risk, comment = calculate_stock_score(existing_stock.current_price, existing_stock.high_52week, existing_stock.low_52week)
-                
-                return {
-                    "status": "성공 (방어막 캐싱)",
-                    "message": "디도스 방지를 위해 5초 이내 반복 요청은 저장된 데이터를 반환합니다.", # massage -> message 오타 수정
-                    "data": {
-                        "id": existing_stock.id,
-                        "ticker": ticker, # 프론트엔드가 요구하는 ticker 매핑 추가
-                        "name": existing_stock.name,
-                        "current_price": existing_stock.current_price,
-                        "market_cap": existing_stock.market_cap,
-                        "high_52week": existing_stock.high_52week,
-                        "low_52week": existing_stock.low_52week          
-                    },
-                    "score": score,
-                    "risk_level": risk,
-                    "comment": comment,
-                    "history": safe_history # 박제된 안전한 데이터 반환          
-                }
-                
-            # [2단계] 1시간 이내 가격만 실시간 패치 구역
-            elif time_difference < timedelta(hours=1):
+               
+            # 1시간 이내 가격만 실시간 패치 구역
+            if time_difference < timedelta(hours=1):
                 print(f"[안정 구역] 1시간 이내 데이터 존재. 실시간 주가 검증 진행.")
                 try:
                     live_info = yf.Ticker(ticker).info
                     live_price = live_info.get("currentPrice") or live_info.get("regularMarketPrice") or existing_stock.current_price
                     existing_stock.current_price = float(live_price)
+                    existing_stock.updated_at = datetime.now()
                     db.commit()
                     db.refresh(existing_stock)
                 except Exception as e:
@@ -143,7 +136,7 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
                 existing_stock.market_cap = stock_info.get("marketCap")
                 existing_stock.high_52week = stock_info.get("fiftyTwoWeekHigh")
                 existing_stock.low_52week = stock_info.get("fiftyTwoWeekLow")
-                
+                existing_stock.updated_at = datetime.now()
                 db.commit()
                 db.refresh(existing_stock)
                 
@@ -173,9 +166,9 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
                     current_price = float(current_price),
                     market_cap=stock_info.get("marketCap"),
                     high_52week=stock_info.get("fiftyTwoWeekHigh"),
-                    low_52week=stock_info.get("fiftyTwoWeekLow")
+                    low_52week=stock_info.get("fiftyTwoWeekLow"),
+                    updated_at=datetime.now()
                 )
-
                 db.add(new_stock)
                 db.commit()
                 db.refresh(new_stock)

@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import React from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -10,7 +9,6 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import "./App.css"; 
 
 // 부모(StockPage)가 API로 이미 받아온 historyData를 받음
 const StockChart = ({ ticker, historyData }) => {
@@ -25,6 +23,14 @@ const StockChart = ({ ticker, historyData }) => {
     displayDate: item.list_date.substring(5), // 월-일만 잘라내기
   }));
 
+  // 1년전 첫 데이터와 최근 마지막 데이터 종가 비교하여 동적 색상 결정
+  const firstPrice = formattedData[0]?.close_price ||0;
+  const lastPrice = formattedData[formattedData.length - 1]?.close_price || 0;
+  const isUp = lastPrice >= firstPrice;
+
+  // 상승 빨강, 하락 파란 매핑용 정보 구성
+  const chartThemeColor = isUp ? "#e11d48" : "#2563eb";
+
   return (
     <div className="chart-card-container">
       <div className="chart-header">
@@ -38,16 +44,17 @@ const StockChart = ({ ticker, historyData }) => {
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="displayDate" stroke="#888888" fontSize={12} tickLine={false} />
             <YAxis domain={["dataMin - 5", "dataMax + 5"]} stroke="#888888" fontSize={12} tickLine={false} />
+            
             <Tooltip
-              contentStyle={{ backgroundColor: "#1e293b", borderRadius: "8px", color: "#fff", border: "none" }}
-              labelStyle={{ fontWeight: "bold", color: "#38bdf8" }}
+              wrapperClassName="chart-tooltip-wrapper"
+              contentStyle={{}} /* Recharts 기본 인라인 스타일 초기화용 빈 객체 */
             />
             <Legend verticalAlign="top" height={36} />
             <Line
               name="종가 (Close)"
               type="monotone"
               dataKey="close_price"
-              stroke="#0ea5e9"
+              stroke={chartThemeColor} /* 동적 색상 바인딩*/
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 6 }}

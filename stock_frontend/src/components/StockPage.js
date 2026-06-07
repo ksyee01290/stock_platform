@@ -42,18 +42,23 @@ function StockPage({ renderChart }) {
     const executeSearch = async(targetTicker) =>{
         if (!targetTicker) return;
         setLoading(true);
-        setError(null);
-        setStockData(null);
         
         try {
             const cleanTicker = targetTicker.toUpperCase();
             const response = await axios.get(`http://127.0.0.1:8000/api/stocks/integrated/${cleanTicker}`);
+            setError(null);
             setStockData(response.data);
-
             fetchSidebarData();
         } catch (err) {
             console.error(err);
-            setError('주식 데이터를 가져오는데 실패했습니다.');
+
+            if (err.response && err.response.status === 429){
+                const backendMessage = err.response.data.detail || '과도한 요청입니다. 잠시 후 시도하세요.';
+                alert(backendMessage);
+            } else{
+                setStockData(null);
+                setError('주식 데이터를 가져오는데 실패했습니다.');
+            }
         } finally {
             setLoading(false);
         }
@@ -61,7 +66,7 @@ function StockPage({ renderChart }) {
 
     const info = stockData?.data ? stockData.data : stockData;
 
-    // 52wn 최고/최저가 대비 현재 가격 위치 백분율 계산 로직
+    // 52주 최고/최저가 대비 현재 가격 위치 백분율 계산 로직
     const calculatePosition = () => {
         if(!info || !info.current_price || !info.high_52week || !info.low_52week) return 0;
         const high = parseFloat(info.high_52week);
@@ -78,7 +83,7 @@ function StockPage({ renderChart }) {
     return(
         <div className="page-box stock-theme">
             <h3> 주식 분석 구역</h3>
-            <div>
+            <div className="search-bar-zone">
                 <input
                     type="text"
                     value={ticker}
@@ -91,7 +96,7 @@ function StockPage({ renderChart }) {
                 </button>
             </div>
 
-            {error && <p style={{ color: 'red'}}> 에러: {error}</p>}
+            {error && <p className="error-text-message"> 에러: {error}</p>}
             {loading && <div className="chart-loading">통합 서버 창고에서 정밀 데이터 패치 중...</div>}
 
             <div className="stock-main-layout">
@@ -190,7 +195,6 @@ function StockPage({ renderChart }) {
                                             executeSearch(item.ticker);
                                         }}
                                         className="recent-ticker-badge"
-                                    
                                     >
                                         {item.ticker}
                                     </span>
