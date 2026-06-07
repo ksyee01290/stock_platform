@@ -294,10 +294,6 @@
 .rank-ticker { font-weight: 600; color: #2d3748; }
 .rank-count { color: #718096; font-size: 11px; }
 
-/* ==========================================================================
-   🧹 [인라인 스타일 100% 분리 교정] 코드 청소부 스타일
-   ========================================================================== */
-
 /* 검색 입력 영역의 마진 분리 */
 .search-bar-zone {
   margin-bottom: 20px;
@@ -332,4 +328,44 @@
   color: #e53e3e;
   font-weight: 600;
   margin: 10px 0;
+}
+
+/* ==========================================================================
+    52주 현재 가격 위치 게이지 바 스타일
+   ========================================================================== */
+.price-range-bar-container {
+  margin: 20px 0 25px 0;
+  padding: 0 5px;
+}
+
+.price-range-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.price-range-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background-color: #e2e8f0;
+  border-radius: 3px;
+}
+
+.price-range-pointer {
+  position: absolute;
+  top: 50%;
+  /* 자바스크립트가 넘겨준 백분율 위치로 동적 맵핑 */
+  left: var(--current-pos); 
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background-color: #3182ce;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: left 0.3s ease-out;
 }

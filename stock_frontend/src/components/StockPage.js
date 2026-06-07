@@ -61,6 +61,20 @@ function StockPage({ renderChart }) {
 
     const info = stockData?.data ? stockData.data : stockData;
 
+    // 52wn 최고/최저가 대비 현재 가격 위치 백분율 계산 로직
+    const calculatePosition = () => {
+        if(!info || !info.current_price || !info.high_52week || !info.low_52week) return 0;
+        const high = parseFloat(info.high_52week);
+        const low = parseFloat(info.low_52week);
+        const current = parseFloat(info.current_price);
+        if (high === low) return 0;
+
+        // 백분율 계산 후 0% ~ 100% 사이로 안전 패딩
+        const percentage = ((current - low) / (high - low)) * 100;
+        return Math.min(Math.max(percentage,0), 100);
+    };
+    const currentPositionPercent = calculatePosition();
+
     return(
         <div className="page-box stock-theme">
             <h3> 주식 분석 구역</h3>
@@ -94,6 +108,21 @@ function StockPage({ renderChart }) {
                                     <p><strong>시가 총액:</strong> ${info.market_cap ? info.market_cap.toLocaleString() : 'N/A'}</p>
                                     <p><strong>52주 최고가:</strong> ${info.high_52week || 'N/A'}</p>
                                     <p><strong>52주 최저가:</strong> ${info.low_52week || 'N/A'}</p>
+                                </div>
+
+                                {/* 52주 주가 위치 비주얼 게이지 바 영역 */}
+                                <div className="price-range-bar-container">
+                                    <div className="price-range-label">
+                                        <span>52주 최저 (${info.low_52week})</span>
+                                        <span>52주 최고 (${info.high_52week})</span>
+                                    </div>
+                                    <div className="price-range-track">
+                                        {/* 대쉬보드 내 인라인 완전 배제를 위해 스타일 속성 대신 custom property로 변수만 전달 */}
+                                        <div 
+                                            className="price-range-pointer" 
+                                            style={{ '--current-pos': `${currentPositionPercent}%` }}
+                                        />
+                                    </div>
                                 </div>
                                 
                                 {/* 2. 자체 위험도 분석 리포트 */}
