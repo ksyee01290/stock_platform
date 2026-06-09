@@ -38,26 +38,7 @@ def calculate_stock_score(current_price, high_52week, low_52week):
 def get_stock_history(ticker: str, db: Session = Depends(get_db)):
     ticker = ticker.upper() # 대문자 변환 (aapl -> AAPL)
     
-    existing_stock = db.query(models.Stock).filter(models.Stock.ticker == ticker).first()
-    
-    if existing_stock:
-        current_time = datetime.now()
-        stock_updated_time = existing_stock.updated_at
-        
-        if stock_updated_time.tzinfo is not None:
-            stock_updated_time = stock_updated_time.replace(tzinfo=None)
-            
-        time_difference = current_time - stock_updated_time
-        
-        print(f"[{ticker} 시간 검증] 현재시간: {current_time} | DB시간: {stock_updated_time} | 차이(초): {time_difference.total_seconds()}초")
-        
-        if 0 <= time_difference.total_seconds() < 1:
-            print(f"[방어막 발동] {ticker} - {time_difference.total_seconds()} 5초 만에 재요청되었습니다.")
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="과도한 연타가 감지되었습니다. 5초 후 다시 시도해주세요"
-            )
-    
+    # [1단계] 검색 히스토리 로그 적재 (독립 트랜잭션 분리)
     try:
         search_log = models.SearchHistory(ticker=ticker)
         db.add(search_log)
@@ -66,10 +47,10 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
         print(f"[Search Log Error] 검색 히스토리 적재 실패: {str(log_error)}")
         db.rollback()
     
+    # [2단계] 1년 치 차트 데이터 선행 조회
     today = date.today()
     one_year_ago = today - timedelta(days=365)
     
-    # [선행 조회] 1년 치 차트 데이터 조회
     history_data = db.query(models.StockHistory)\
         .filter(models.StockHistory.ticker == ticker)\
         .filter(models.StockHistory.list_date >= one_year_ago)\
@@ -79,21 +60,28 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
     safe_history = [schemas.StockHistoryResponse.model_validate(h) for h in history_data]
     
     with stock_lock:
-        db.rollback()
+        db.rollback() # SQLAlchemy 세션 캐시 초기화 (최신 DB 스냅샷 확보)
         
         existing_stock = db.query(models.Stock).filter(models.Stock.ticker == ticker).first()
         
         if existing_stock:    
             current_time = datetime.now()
-            stock_updated_time = existing_stock.updated_at
+            stock_updated_time = existing_stock.updated_at.replace(tzinfo=None) if existing_stock.updated_at.tzinfo else existing_stock.updated_at
             time_difference = current_time - stock_updated_time
             
-            print(f"[{ticker} 패치 검증] 경과시간: {time_difference.total_seconds()}초 전 업데이트됨")
-               
+            # 5초 방어막 정상화
+            if 0 <= time_difference.total_seconds() < 5:
+                print(f"[방어막 발동] {ticker} - {time_difference.total_seconds():.2f}초 만에 재요청 연타 감지.")
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="과도한 연타가 감지되었습니다. 5초 후 다시 시도해주세요"
+                )
+                   
             # 1시간 이내 가격만 실시간 패치 구역
             if time_difference < timedelta(hours=1):
                 print(f"[안정 구역] 1시간 이내 데이터 존재. 실시간 주가 검증 진행.")
                 try:
+                    # yf.Ticker(ticker) 인스턴스는 단발성이므로 그대로 한 줄 유지
                     live_info = yf.Ticker(ticker).info
                     live_price = live_info.get("currentPrice") or live_info.get("regularMarketPrice") or existing_stock.current_price
                     existing_stock.current_price = float(live_price)
@@ -110,7 +98,7 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
                     "message": f"1시간 이내에 업데이트된 데이터가 있습니다. (경과시간: {time_difference})",
                     "data": {
                         "id": existing_stock.id,
-                        "ticker": ticker, # ticker 추가
+                        "ticker": ticker,
                         "name": existing_stock.name,
                         "current_price": existing_stock.current_price,
                         "market_cap": existing_stock.market_cap,
@@ -123,15 +111,23 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
                     "history": safe_history
                 }
         
-        # [3단계] DB에 데이터가 없거나 1시간이 지난 경우 실시간 데이터 수집
+        # [4단계] DB에 데이터가 없거나 1시간이 지난 경우 전체 라이브 데이터 수집 구역
         try:
-            stock_info = yf.Ticker(ticker).info
+            print(f"[라이브 호출] yfinance에서 {ticker} 신규/만료 데이터를 수집합니다.")
             
-            if "regularMarketPrice" not in stock_info and "currentPrice" not in stock_info:
-                raise HTTPException(status_code=404, detail="존재하지 않는 주식 이거나 데이터를 가져올 수 없습니다.")
+            yf_ticker = yf.Ticker(ticker)
+            stock_info = yf_ticker.info
+            
+            # 없는 주식 예외 필터링 (404 예외 전환)
+            if not stock_info or ("regularMarketPrice" not in stock_info and "currentPrice" not in stock_info):
+                raise HTTPException(status_code=404, detail=f"존재하지 않거나 야후 파이낸스에서 찾을 수 없는 티커입니다: {ticker}")
             
             current_price = stock_info.get("currentPrice") or stock_info.get("regularMarketPrice") or 0.0
             
+            target_stock = None
+            status_msg = ""
+            msg_detail = ""
+
             if existing_stock:
                 existing_stock.name = stock_info.get("shortName") or stock_info.get("longName") or ticker
                 existing_stock.current_price = float(current_price)
@@ -139,29 +135,12 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
                 existing_stock.high_52week = stock_info.get("fiftyTwoWeekHigh")
                 existing_stock.low_52week = stock_info.get("fiftyTwoWeekLow")
                 existing_stock.updated_at = datetime.now()
-                db.commit()
-                db.refresh(existing_stock)
                 
-                score, risk, comment = calculate_stock_score(existing_stock.current_price, existing_stock.high_52week, existing_stock.low_52week)
-                
-                return {
-                    "status": "성공 (DB 업데이트 완료)",
-                    "message": f"오래된 {ticker} 데이터를 새로 갱신했습니다.",
-                    "data": {
-                        "id": existing_stock.id,
-                        "ticker": ticker,
-                        "name": existing_stock.name,
-                        "current_price": existing_stock.current_price,
-                        "market_cap": existing_stock.market_cap,
-                        "high_52week": existing_stock.high_52week,
-                        "low_52week": existing_stock.low_52week          
-                    },
-                    "score": score,
-                    "risk_level": risk,
-                    "comment": comment,
-                    "history": safe_history
-                }
+                target_stock = existing_stock
+                status_msg = "성공 (DB 업데이트 완료)"
+                msg_detail = f"오래된 {ticker} 데이터를 새로 갱신했습니다."
             else:
+                # 아예 없는 신규 종목 추가
                 new_stock = models.Stock(
                     ticker=ticker,
                     name=stock_info.get("shortName") or stock_info.get("longName") or ticker,
@@ -172,65 +151,83 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
                     updated_at=datetime.now()
                 )
                 db.add(new_stock)
-                #==============================================================
-                # 주식 데이터 자동수집기 라인
+                
+                target_stock = new_stock
+                status_msg = "성공 (실시간 수집 + 차트 빌드)"
+                msg_detail = f"yfinance에서 {ticker} 데이터를 실시간으로 가져와 DB에 저장했습니다."
+                
+                # =============================================================
+                # 신규 종목일 때만 과거 1년 치 차트 데이터 수집 수행
                 # =============================================================
                 print(f"[자동 수집 발동!] {ticker} 종목의 과거 1년치 일일 주가 데이터를 수집합니다.")
                 try:
-                    yf_ticker = yf.Ticker(ticker)
                     hist_df = yf_ticker.history(period="1y")
                     
                     history_items = []
-                    for index, row in hist_df.iterrows():
-                        list_date = index.date() if hasattr(index, 'date') else index
-                        
-                        history_log = models.StockHistory(
-                            ticker=ticker,
-                            list_date=list_date,
-                            open_price=float(row['Open']),
-                            high_price=float(row['High']),
-                            low_price=float(row['Low']),
-                            close_price=float(row['close']),
-                            volume=int(row['Volume']),
-                            per=None,
-                            pbr=None
-                        )
-                        history_items.append(history_log)
+                    if hist_df is not None and not hist_df.empty:
+                        for index, row in hist_df.iterrows():
+                            list_date = index.date() if hasattr(index, 'date') else index
+                            
+                            open_p = row.get('Open') or row.get('open') or current_price
+                            high_p = row.get('High') or row.get('high') or current_price
+                            low_p = row.get('Low') or row.get('low') or current_price
+                            close_p = row.get('Close') or row.get('close') or current_price
+                            volume_v = row.get('Volume') or row.get('volume') or 0
+                            
+                            history_log = models.StockHistory(
+                                ticker=ticker,
+                                list_date=list_date,
+                                open_price=float(open_p),
+                                high_price=float(high_p),
+                                low_price=float(low_p),
+                                close_price=float(close_p),
+                                volume=int(volume_v),
+                                per=None,
+                                pbr=None
+                            )
+                            history_items.append(history_log)
                         
                     if history_items:
                         db.bulk_save_objects(history_items)
                         print(f"[{ticker}] 총 {len(history_items)}건의 히스토리 데이터 적재 성공!")
-                        
                         safe_history = [schemas.StockHistoryResponse.model_validate(h) for h in history_items]
+                    else:
+                        safe_history = []
                 
                 except Exception as history_error:
                     print(f"[History 수집 경고] {ticker} 과거 주가 수집 실패 (기본 정보만 우선 저장): {str(history_error)}")
-                
-                # ==============================================================
-                db.commit()
-                db.refresh(new_stock)
+                    safe_history = [] # 예외 터져도 차트만 비우고 500 에러 차단
 
-                score, risk, comment = calculate_stock_score(new_stock.current_price, new_stock.high_52week, new_stock.low_52week)
-                
-                return {
-                    "status": "성공 (실시간 수집 + 차트 빌드)",
-                    "message": f"yfinance에서 {ticker} 데이터를 실시간으로 가져와 DB에 저장했습니다.",
-                    "data": {
-                        "id": new_stock.id, # existing_stock -> new_stock 변수 오타 전면 수정
-                        "ticker": ticker,
-                        "name": new_stock.name,
-                        "current_price": new_stock.current_price,
-                        "market_cap": new_stock.market_cap,
-                        "high_52week": new_stock.high_52week,
-                        "low_52week": new_stock.low_52week          
-                    },
-                    "score": score,
-                    "risk_level": risk,
-                    "comment": comment,
-                    "history": safe_history
-                }
+            db.commit()
+            db.refresh(target_stock)
+
+            score, risk, comment = calculate_stock_score(target_stock.current_price, target_stock.high_52week, target_stock.low_52week)
+            
+            return {
+                "status": status_msg,
+                "message": msg_detail,
+                "data": {
+                    "id": target_stock.id,
+                    "ticker": ticker,
+                    "name": target_stock.name,
+                    "current_price": target_stock.current_price,
+                    "market_cap": target_stock.market_cap,
+                    "high_52week": target_stock.high_52week,
+                    "low_52week": target_stock.low_52week          
+                },
+                "score": score,
+                "risk_level": risk,
+                "comment": comment,
+                "history": safe_history
+            }
+
+        except HTTPException as http_err:
+            db.rollback()
+            raise http_err
         except Exception as e:
             db.rollback()
+            if "404" in str(e) or "not found" in str(e).lower():
+                raise HTTPException(status_code=404, detail=f"존재하지 않는 주식 티커입니다: {ticker}")
             raise HTTPException(status_code=500, detail=f"주식 데이터 수집 중 오류 발생: {str(e)}")
     
 @router.get("/search/recent", response_model=list[schemas.RecentSearchResponse])
