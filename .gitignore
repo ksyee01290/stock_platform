@@ -7,3 +7,5 @@ __pycache__/
 .vscode/
 
 local_stock.db
+
+study.txt
