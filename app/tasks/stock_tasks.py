@@ -6,14 +6,14 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 import yfinance as yf
-from datetime import datetime, timezone
+from datetime import datetime
 
 from app.database import SessionLocal
 from app.stocks import models
 
 def update_top_stocks_batch():
     """
-    DB에 등록된 주식들의 무거운 지표들을 주기적으로 자동갱신. 
+    DB에 등록된 주식들의 과거 1년치 데이터 초기 적재 및 10분 주기 실시간 가격 갱신 
     """
     db: Session = SessionLocal()
     try:
@@ -27,6 +27,36 @@ def update_top_stocks_batch():
         for stock in stocks:
             try:
                 ticker_data = yf.Ticker(stock.ticker)
+                # ---------------------------------------------------------------------
+                # [핵심 보충] 과거 데이터 초기 적재 (Data Seeding)
+                # StockHistory 테이블에 해당 종목의 과거 데이터가 한 건도 없다면 1년 치를 통째로 긁어옵니다.
+                # ---------------------------------------------------------------------
+                history_exists = db.query(models.StockHistory).filter(models.StockHistory.ticker == stock.ticker).first()
+                if not history_exists:
+                    print(f"[Initial Seed] {stock.ticker} 종목의 과거 1년치 일봉 데이터를 수집합니다...")
+                    hist_df = ticker_data.history(period="1y")
+                    
+                    if hist_df is not None and not hist_df.empty:
+                        history_items = []
+                        for index, row in hist_df.iterrows():
+                            list_date = index.date() if hasattr(index, 'date') else index
+
+                            history_entry = models.StockHistory(
+                                ticker=stock.ticker,
+                                list_date=list_date,
+                                open_price=float(row.get('Open') or 0.0),
+                                high_price=float(row.get('High') or 0.0),
+                                low_price=float(row.get('Low') or 0.0),
+                                close_price=float(row.get('Close') or 0.0),
+                                volume=int(row.get('Volume') or 0)
+                            )
+                            history_items.append(history_entry)
+                            
+                            if history_items:
+                                db.bulk_save_objects(history_items)
+                                print(f"[Initial Seed] {stock.ticker} 과거 데이터 {len(history_items)}건 적재 성공")
+                                
+                                
                 info = ticker_data.info
                 
                 if not info:
