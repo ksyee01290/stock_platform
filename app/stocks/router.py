@@ -3,10 +3,12 @@
 - Frontend(React/Next.js)의 API 요청을 수신하는 문지기 역할을 합니다.
 - [변경사항] 외부 API(yfinance) 호출 및 동시성 락(Lock) 을 제거하고, DB데이터를 즉시 투입
 """
+import math
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date, datetime, timedelta
+import yfinance as yf
 
 from app.stocks import models, schemas
 from app.database import get_db
@@ -46,11 +48,68 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
     # DB 에서 마스터 주식 종목 조회
     existing_stock = db.query(models.Stock).filter(models.Stock.ticker == ticker).first()
     
+    #----------------------------------------
+    # DB에 없는 완전한 새로운 종목을 유저가 검색하면 즉시 1년치 과거 데이터와 기본정보 수집
+    #----------------------------------------
     if not existing_stock:
-        raise HTTPException(
-            status_code=status.HTTP_505_NOT_FOUND,
-            detail=f"존재하지 않거나 플랫폼에 등록되지 않은 주식 입니다.: {ticker}"
-        )
+        print(f"{ticker}는 신규 종목입니다. 즉시 야후에서 수집을 시작합니다.")
+        try:
+            yf_ticker = yf.Ticker(ticker)
+            stock_info = yf_ticker.info
+            
+            if not stock_info or ("regularMarketPrice" not in stock_info and "currentPrice" not in stock_info):
+                raise HTTPException(status_code=404, detail=f"존재하지 않는 야후 파이낸스 입니다: {ticker}")
+            live_price = stock_info.get("currentPrice") or stock_info.get("regularMarketPrice") or 0.0
+            
+            existing_stock = models.Stock(
+                ticker=ticker,
+                name=stock_info.get("shortName") or stock_info.get("longName") or ticker,
+                current_price=float(live_price),
+                market_cap=stock_info.get("marketCap"),
+                high_52week=stock_info.get("fiftyTwoWeekHigh"),
+                low_52week=stock_info.get("fiftyTwoWeekLow"),
+                updated_at=datetime.now()
+            )
+            db.add(existing_stock)
+            db.commit()
+            
+            hist_df = yf_ticker.history(period="1y")
+            if hist_df is not None and not hist_df.empty:
+                history_items = []
+                for index, row in hist_df.iterrows():
+                    list_date = index.date() if hasattr(index, 'date') else index
+                    
+                    o_price = row.get('Open') if not math.isnan(float(row.get('Open', 0))) else live_price
+                    h_price = row.get('High') if not math.isnan(float(row.get('High', 0))) else live_price
+                    l_price = row.get('Low') if not math.isnan(float(row.get('Low', 0))) else live_price
+                    c_price = row.get('Close') if not math.isnan(float(row.get('Close', 0))) else live_price
+                    
+                    history_log = models.StockHistory(
+                        ticker=ticker,
+                        list_date=list_date,
+                        open_price=float(o_price),
+                        high_price=float(h_price),
+                        low_price=float(l_price),
+                        close_price=float(c_price),
+                        volume=int(row.get('Volume') or 0)
+                    )
+                    history_items.append(history_log)
+                
+                if history_items:
+                    db.bulk_save_objects(history_items)
+            
+            
+            db.commit()
+            db.refresh(existing_stock)
+            print(f"[On-Demand 수집 완료] {ticker} 종목 등록 및 1년 치 데이터 적재 성공!")
+            
+        except HTTPException as http_err:
+            db.rollback()
+            raise http_err
+        except Exception as e:
+            db.rollback()
+            print(f"[On-Demand 에러 발생 인쇄] 구체적 에러 내용: {str(e)}")
+            raise HTTPException(status_code=500,)
         
     # 1년 치 차트 데이터 선행 조회
     today = date.today()
