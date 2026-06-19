@@ -6,8 +6,24 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, BigInteger, DateTime, ForeignKey, Date, Index
 from sqlalchemy.sql import func 
+from sqlalchemy.orm import relationship
 from app.database import Base
 
+class User(Base):
+    """ 
+    [유저 회원가입/로그인 테이블]
+    - 유저의 고유 정보 및 패스워드(암호화 해시) 관리
+    - 유저 삭제 시 즐겨찾기 및 검색 히스토리 자동 삭제
+    """
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+    
+    watchlists = relationship("Watchlist", back_populates="user", cascade="all, delete-orphan")
+    search_histories = relationship("SearchHistory", back_populates="user", cascade="all, delete-orphan")
+    
 class Stock(Base):
     __tablename__ = "stocks"
     
@@ -24,15 +40,11 @@ class Stock(Base):
 class StockHistory(Base):
     """
     - 종목별 과거 일일 주가 및 가치투자 지표 히스토리를 적재하는 거대한 데이터 창고
-    - 데이터가 1,000만 건 이상 쌓여도 초고속 조회가 가능하도록 복합 인덱스(Composite Index)를 적용
     """
-    
     __tablename__ = "stock_histories"
     
     id = Column(Integer, primary_key=True, index=True)
-    # 외래 키 설정 : stocks 테이블의 ticker 삭제되면 연쇄 삭제(CASCADE)되도록 안정장치 구축
     ticker = Column(String, ForeignKey("stocks.ticker", ondelete="CASCADE"), nullable=False, index=True)
-    # 주가 기록 날짜 (시간 정보가 없는 날짜 전용 Date 타입)
     list_date = Column(Date, nullable=False, index=True)
     
     open_price = Column(Float, nullable=False)   # 시가
@@ -52,23 +64,30 @@ class StockHistory(Base):
     
 class Watchlist(Base):
     """
-    [즐겨찾기 테이블]
-    -유저 관심종목 등록 관리
-    -추후 로그인 기능 도입시 user_id 투입
+    [즐겨찾기 테이블 - 유저별 연동]
+    - user_id 가 ticker 을 등록했는지 관계를 명시
     """
     __tablename__ = "watchlists"
     
     id = Column(Integer, primary_key=True, index=True)
-    ticker = Column(String, nullable=False, index=True)
+    
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    ticker = Column(String, ForeignKey("stocks.ticker", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    user = relationship("User", back_populates="watchlists")
     
 class SearchHistory(Base):
     """
-    [검색 히스토리 테이블]
-    -유저가 integrated API를 호출할 때마다 검색 기록을 로그처럼 쌓음
+    [검색 히스토리 테이블 - 유저별 연동]
+    - 비로그인 유저 혹은 특정 유저가 검색한 기록을 나누어 적재
     """
     __tablename__ = "search_histories"
     
     id = Column(Integer, primary_key=True, index=True)
-    ticker = Column(String, nullable=False, index=True)
+    
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    ticker = Column(String, ForeignKey("stocks.ticker", ondelete="CASCADE"), nullable=False, index=True)
     searched_at = Column(DateTime, default=datetime.now)
+    
+    user = relationship("User", back_populates="search_histories")

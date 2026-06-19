@@ -31,6 +31,15 @@ pip freeze > requirements.txt 로 관리할 수 있습니다.
   - 역할: FastAPI 입출력 데이터의 가이드라인(Schema)을 잡고 검증하는 라이브러리.
   - 설치: (fastapi 설치 시 내장되어 함께 설치됨)
 
+▪ passlib[bcrypt]
+  - 역할: 비밀번호를 안전하게 암호화하고 검증해 주는 도구
+  - 설치: pip install "passlib[bcrypt]"
+  - 최신bcrypt 문제 500에러발생 호환 되는 안정 버전 bcrypt==4.0.1
+
+▪ PyJWT
+  - 역할: 로그인이 성공했을 때 유저에게 증명서 역할을 할 JWT 토큰을 발행해 주는 도구
+  - 설치: pip install PyJWT
+
 [백엔드 한방 설치 치트키]
 pip install fastapi uvicorn sqlalchemy psycopg2-binary
 

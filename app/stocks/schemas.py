@@ -50,3 +50,21 @@ class WatchlistItemResponse(BaseModel):
     current_price: float
     high_52week: float | None
     low_52week: float | None
+    
+# 유저 회원가입 및 인증 관련 스키마
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    
+    class Config:
+        from_attributes = True
+        
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    

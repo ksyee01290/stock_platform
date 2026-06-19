@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.stocks.router import router as stock_router
+from app.auth.router import router as auth_router
 
 from app.database import engine, Base
 from app.stocks import models
@@ -38,3 +39,5 @@ def home():
     return {"status": "성공", "message": "FastAPI 백엔드 서버가 정상적으로 켜졌습니다!"}
 
 app.include_router(stock_router, prefix="/api/stocks", tags=["주식"])
+
+app.include_router(auth_router)
