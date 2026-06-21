@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import StockChart from '../StockChart';
 import '../App.css';
 
-function StockPage({ renderChart }) {
+function StockPage({ token, onRequireAuth }) {
     const [ticker, setTicker] = useState('');
     const [stockData, setStockData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -14,30 +14,30 @@ function StockPage({ renderChart }) {
     const [trendingSearches, setTrendingSearches] = useState([]);
     const [watchlist, setWatchlist] = useState([]);
 
-    const authHeader = {
-        headers: { Authorization: `Bearer ${token}` }
-    };
-
     // 백엔드 사이드바 통계 데이터
-    const fetchSidebarData = async () =>{
+    const fetchSidebarAndWatchlist = useCallback(async () =>{
         try{
-            const response = await axios.get('http://127.0.0.1:8000/api/stocks/search/dashboard-init');
-            
-            console.log("통합 대시보드 원본데이터:", response.data);
-
-            const { recent, trending } = response.data;
+            const dashboardRes = await axios.get('http://127.0.0.1:8000/api/stocks/search/dashboard-init');
+            const { recent, trending } = dashboardRes.data;
             if (recent && Array.isArray(recent)) setRecentSearches(recent);
             if (trending && Array.isArray(trending)) setTrendingSearches(trending);
+
+            if (token) {
+                const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+                const watchlistRes = await axios.get('http://127.0.0.1:8000/api/stocks/watchlist', authHeader);
+                setWatchlist(watchlistRes.data);
+            } else {
+                setWatchlist([]);
+            }
         } catch (err) {
             console.error('통계 데이터를 가져오는데 실패했습니다.', err);
         }
-    };
+    }, [token]);
 
     useEffect(()=>{
-        fetchSidebarData();
-    }, []);
+        fetchSidebarAndWatchlist();
+    }, [fetchSidebarAndWatchlist]);
 
-    // 기존 유지 및 수정
     const handleSearch = async () => {
         if (!ticker) return alert('종목을 입력해주세요 (예: AAPL)');
         await executeSearch(ticker);
@@ -53,7 +53,7 @@ function StockPage({ renderChart }) {
             const response = await axios.get(`http://127.0.0.1:8000/api/stocks/integrated/${cleanTicker}`);
             setError(null);
             setStockData(response.data);
-            fetchSidebarData();
+            fetchSidebarAndWatchlist();
         } catch (err) {
             console.error(err);
 
@@ -69,7 +69,26 @@ function StockPage({ renderChart }) {
         }
     };
 
+    // 즐겨찾기 등록/해제 토글버튼 함수
+    const handleToggleWatchlist = async (targetTicker) => {
+        if (!token) {
+            alert('즐겨찾기 기능은 로그인이 필요합니다.');
+            onRequireAuth();
+            return;
+        }
+
+        try {
+            const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+            const response = await axios.post(`http://127.0.0.1:8000/api/stocks/watchlist/${targetTicker.toUpperCase()}`, {}, authHeader);
+            alert(response.data.message);
+            fetchSidebarAndWatchlist(); // 좌측 리스트 갱신
+        } catch (err) {
+            alert(err.response?.data?.detail || '즐겨찾기 토글 실패');
+        }
+    };
+
     const info = stockData?.data ? stockData.data : stockData;
+    const isCurrentFavorite = watchlist.some(item => item.ticker === info?.ticker);
 
     // 52주 최고/최저가 대비 현재 가격 위치 백분율 계산 로직
     const calculatePosition = () => {
@@ -78,8 +97,6 @@ function StockPage({ renderChart }) {
         const low = parseFloat(info.low_52week);
         const current = parseFloat(info.current_price);
         if (high === low) return 0;
-
-        // 백분율 계산 후 0% ~ 100% 사이로 안전 패딩
         const percentage = ((current - low) / (high - low)) * 100;
         return Math.min(Math.max(percentage,0), 100);
     };
@@ -111,8 +128,13 @@ function StockPage({ renderChart }) {
                         <div className="dashboard-left-stack">
                             {/* 1. 상단 주식 상세 정보 카드 */}
                             <div className="result-card">
-                                <h4> {info.name || ticker} ({info.ticker || ticker})</h4>
-                                
+                                <div className="stock-title-area">
+                                    <h4>{info.name || ticker} ({info.ticker || ticker})</h4>
+                                    <button onClick={() => handleToggleWatchlist(info.ticker || ticker)} className="favorite-toggle-btn">
+                                        {isCurrentFavorite ? '⭐' : '☆'}
+                                    </button>
+                                </div>
+
                                 <div className="stock-info-grid">
                                     <p><strong>현재 가격:</strong> ${info.current_price || 'N/A'}</p>
                                     <p><strong>시가 총액:</strong> ${info.market_cap ? info.market_cap.toLocaleString() : 'N/A'}</p>
@@ -185,6 +207,23 @@ function StockPage({ renderChart }) {
 
                 {/* 우측영역 */}
                 <div className="stock-right-sidebar">
+                    {/* 내 관심 종목 구역 */}
+                    <div className="dashboard-stat-box watchlist-box">
+                        <h5 className="dashboard-stat-title">⭐ 내 관심 종목</h5>
+                        <div className="watchlist-list">
+                            {watchlist.length === 0 ? (
+                                <p className="dashboard-no-data">즐겨찾기한 주식이 없습니다.</p>
+                            ) : (
+                                watchlist.map((item) => (
+                                    <div key={item.id} onClick={() => { setTicker(item.ticker); executeSearch(item.ticker); }} className="trending-rank-item watchlist-item-clickable">
+                                        <span className="rank-ticker">{item.ticker}</span>
+                                        <span className="watchlist-price">${item.current_price}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
                     {/* 최근 검색한 종목 */}
                     <div className="dashboard-stat-box">
                         <h5 className="dashboard-stat-title"> 최근 검색 종목</h5>

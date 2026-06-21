@@ -82,7 +82,7 @@
 }
 .search-button {
   padding: 12px 24px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   cursor: pointer;
   background-color: #1a202c;
@@ -400,23 +400,21 @@
   margin: 100px auto;
 }
 
-.auth-input-full {
+.auth-input-full, .auth-input-password {
   width: 100%;
-  margin-bottom: 10px;
-}
-
-.auth-input-password {
-  width: 100%;
-  margin-bottom: 20px;
+  box-sizing: border-box; 
+  margin-bottom: 15px;
 }
 
 .auth-submit-button {
   width: 100%;
+  box-sizing: border-box;
   margin-bottom: 10px;
 }
 
 .auth-toggle-button {
   width: 100%;
+  box-sizing: border-box;
   background: none;
   color: #4a5568;
 }
@@ -465,4 +463,11 @@
 .watchlist-price {
   font-size: 12px;
   color: #4a5568;
+}
+
+.tab-divider {
+  border: 0;
+  height: 1px;
+  background-color: #e2e8f0;
+  margin: 20px 0;
 }
