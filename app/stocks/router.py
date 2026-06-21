@@ -10,6 +10,8 @@ from sqlalchemy import func
 from datetime import date, datetime, timedelta
 import yfinance as yf
 
+from app.auth.router import get_current_user
+from app.stocks.models import User
 from app.stocks import models, schemas
 from app.database import get_db
 
@@ -187,7 +189,11 @@ def get_trending_searches(db: Session = Depends(get_db)):
     return [{"ticker": item.ticker, "search_count": item.search_count} for item in trending_data]
 
 @router.post("/watchlist/{ticker}", response_model=schemas.WatchlistToggleResponse)
-def toggle_watchlist(ticker: str, db: Session = Depends(get_db)):
+def toggle_watchlist(
+    ticker: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+    ):
     """ 
     [즐겨찾기 등록/해제 토글 API]
     -이미 즐겨찾기에 해당 주식이 있으면 -> 삭제 (is_favorite: False)
@@ -199,7 +205,10 @@ def toggle_watchlist(ticker: str, db: Session = Depends(get_db)):
     if not stock_exists:
         raise HTTPException(status_code=404, detail=f"{ticker}는 아직 플랫폼에 등록되지 않았거나 존재하지 않는 주식입니다. 검색해 주세요")
     
-    existing_favorite = db.query(models.Watchlist).filter(models.Watchlist.ticker == ticker).first()
+    existing_favorite = db.query(models.Watchlist).filter(
+        models.Watchlist.ticker == ticker,
+        models.Watchlist.user_id == current_user.id
+        ).first()
     
     if existing_favorite:
         db.delete(existing_favorite)
@@ -210,7 +219,7 @@ def toggle_watchlist(ticker: str, db: Session = Depends(get_db)):
             "message": f"{ticker} 종목이 즐겨찾기에서 정상적으로 삭제되었습니다."
         }
     else:
-        new_favorite = models.Watchlist(ticker=ticker)
+        new_favorite = models.Watchlist(ticker=ticker, user_id=current_user.id)
         db.add(new_favorite)
         db.commit()
         return{
@@ -220,7 +229,10 @@ def toggle_watchlist(ticker: str, db: Session = Depends(get_db)):
         }
 
 @router.get("/watchlist", response_model=list[schemas.WatchlistItemResponse])
-def get_watchlist(db: Session = Depends(get_db)):
+def get_watchlist(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+    ):
     """
     [내 즐겨찾기 리스트 조회 API]
     -유저가 즐겨찾기한 동목들을 stocks 테이블과 조인
@@ -234,6 +246,7 @@ def get_watchlist(db: Session = Depends(get_db)):
         models.Stock.high_52week,
         models.Stock.low_52week
     ).join(models.Stock, models.Watchlist.ticker == models.Stock.ticker)\
+     .filter(models.Watchlist.user_id == current_user.id)\
      .order_by(models.Watchlist.created_at.desc())\
      .all()
      

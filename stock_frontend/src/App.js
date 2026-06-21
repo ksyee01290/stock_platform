@@ -1,9 +1,79 @@
 import React, { useState } from 'react';
 import StockPage from './components/StockPage';
+import axios from 'axios';
 import './App.css';
 
 function App() {
   const [currentTab, setCurrentTab] = useState('stock');
+  const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post('http://127.0.0.1:800/api/auth/login',{username, password});
+      const accessToken = response.data.access_token;
+      localStorage.setItem('token', accessToken);
+      setToken(accessToken);
+      alert('로그인에 성공했습니다!');
+    } catch (err){
+      alert(err.response?.data?.detail || '로그인 실패. 아이디나 비밀번호를 확인하세요.');
+    }
+  };
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post('http://127.0.0.1:8000/api/auth/signup', {username, password});
+      alert('회원가입이 완료되었습니다! 로그인해 주세요.');
+      setIsSignUp(false);
+    } catch (err) {
+      alert(err.response?.data?.detail || '회원가입 실패. 이미 존재하는 아이디 입니다.');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setToken('');
+    window.location.reload();
+  };
+
+  if (!token) {
+    return (
+      <div className="container auth-container">
+        <h1>멀티 분석 플랫폼</h1>
+        <div className="page-box auth-theme">
+          <h3>{isSignUp ? '회원가입' : '로그인'}</h3>
+          <form onSubmit={isSignUp ? handleSignUp : handleLogin}>
+            <input
+              type="text"
+              placeholder="아이디"
+              className="search-input auth-input-full"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+            <input
+              type="password"
+              placeholder="비밀번호"
+              className="search-input auth-input-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button type="submit" className="search-button auth-submit-button">
+              {isSignUp ? '가입하기' : '로그인'}
+            </button>
+          </form>
+          <button onClick={() => setIsSignUp(!isSignUp)} className="tab-button auth-toggle-button">
+            {isSignUp ? '이미 계정이 있으신가요? 로그인' : '계정이 없으신가요? 회원가입'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`container ${currentTab === 'stock' ? 'wide-layout' : ''}`}>
@@ -37,7 +107,7 @@ function App() {
         {/* 주식 분석 탭 활성화 시 */}
         {currentTab === 'stock' && (
           <div>
-            <StockPage />
+            <StockPage token={token} />
           </div>
         )}
 

@@ -9,9 +9,14 @@ function StockPage({ renderChart }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // 최근 검색어 및 인기검색어
+    // 최근 검색어 및 인기검색어 및 즐겨찾기
     const [recentSearches, setRecentSearches] = useState([]);
     const [trendingSearches, setTrendingSearches] = useState([]);
+    const [watchlist, setWatchlist] = useState([]);
+
+    const authHeader = {
+        headers: { Authorization: `Bearer ${token}` }
+    };
 
     // 백엔드 사이드바 통계 데이터
     const fetchSidebarData = async () =>{
