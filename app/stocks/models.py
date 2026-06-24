@@ -21,8 +21,13 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
     
+    # 모의투자용 예수금 추가
+    cash_balance = Column(Float, default=10000000.0, nullable=False)
+    
     watchlists = relationship("Watchlist", back_populates="user", cascade="all, delete-orphan")
     search_histories = relationship("SearchHistory", back_populates="user", cascade="all, delete-orphan")
+    # 유저 탈퇴 시 자산 내역 삭제
+    portfolios = relationship("Portfolio", back_populates="user", cascade="all, delete-orphan")
     
 class Stock(Base):
     __tablename__ = "stocks"
@@ -91,3 +96,21 @@ class SearchHistory(Base):
     searched_at = Column(DateTime, default=datetime.now)
     
     user = relationship("User", back_populates="search_histories")
+    
+class Portfolio(Base):
+    """
+    [보유 주식 테이블 - 유저별 연동]
+    - 유저가 몇주를 들고있는지 평단가 얼마에 들고있는지 기록
+    """
+    __tablename__ = "portfolios"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    ticker = Column(String, ForeignKey("stocks.ticker", ondelete="CASCADE"), nullable=False, index=True)
+
+    quantity = Column(Integer, default=0, nullable=False) # 보유 수량
+    average_price = Column(Float, default=0.0, nulllable=False) # 매수 평단가
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    user = relationship("User", back_populates="portfolios")
