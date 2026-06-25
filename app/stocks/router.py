@@ -270,3 +270,101 @@ def get_dashboard_init(db: Session = Depends(get_db)):
         "recent": recent,
         "trending": trending
     }
+    
+@router.get("/portfolio/info")
+def get_portfolio_info(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    [가상 자산 및 보유 주식 현황 조회 API]
+    """
+    holdings = db.query(
+        models.Portfolio.id,
+        models.Portfolio.ticker,
+        models.Stock.name,
+        models.Portfolio.quantity,
+        models.Portfolio.average_price,
+        models.Stock.current_price
+    ).join(models.Stock, models.Portfolio.ticker == models.Stock.ticker)\
+     .filter(models.Portfolio.user_id == current_user.id)\
+     .all()
+     
+    portfolio_list = []
+    for item in holdings:
+        eval_value = item.current_price * item.quantity
+        purchase_value = item.average_price * item.quantity
+        profit_loss_rate = 0.0
+        if purchase_value > 0:
+            profit_loss_rate = ((eval_value - purchase_value) / purchase_value) * 100
+
+        portfolio_list.append({
+            "id": item.id,
+            "ticker": item.ticker,
+            "name": item.name,
+            "quantity": item.quantity,
+            "average_price": item.average_price,
+            "current_price": item.current_price,
+            "profit_loss_rate": round(profit_loss_rate, 2)
+        })
+
+    return {
+        "cash_balance": current_user.cash_balance,
+        "holdings": portfolio_list
+    }
+    
+@router.post("/portfolio/buy")
+def buy_stock(
+    request: schemas.TradeRequest,
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    """
+    [모의 가상자산 주식 매수 API]
+    """
+    ticker_upper = request.ticker.upper()
+    
+    stock = db.query(models.Stock).filter(models.Stock.ticker == ticker_upper).first()
+    if not stock:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"[{ticker_upper}]은 등록되지 않은 종목입니다. 먼저 검색하여 원본을 확보해 주세요."
+        )
+    
+    total_cost = stock.current_price * request.quantity
+    
+    if current_user.cash_balance < total_cost:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"가상 자산이 부족합니다. (필요: ${total_cost:,.2f} / 보유: ${current_user.cash_balance:,.2f})"
+        )
+        
+    portfolio_item = db.query(models.Portfolio).filter(
+        models.Portfolio.user_id == current_user.id,
+        models.Portfolio.ticker == ticker_upper
+    ).first()
+    
+    if portfolio_item:
+        old_total_value = portfolio_item.quantity * portfolio_item.average_price
+        new_total_value = total_cost
+        new_quantity = portfolio_item.quantity + request.quantity
+        
+        portfolio_item.average_price = (old_total_value + new_total_value) / new_quantity
+        portfolio_item.quantity = new_quantity
+    else:
+        new_portfolio = models.Portfolio(
+            user_id=current_user.id,
+            ticker=ticker_upper,
+            quantity=request.quantity,
+            average_price=stock.current_price
+        )
+        db.add(new_portfolio)
+        
+    current_user.cash_balance -= total_cost
+    db.commit()
+    
+    return {
+        "status": "success",
+        "message": f"{stock.name}({ticker_upper}) {request.quantity}주 매수가 완료되었습니다!",
+        "cash_balance": current_user.cash_balance
+    }

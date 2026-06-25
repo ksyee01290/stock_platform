@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date, datetime
 
 class StockHistoryResponse(BaseModel):
@@ -67,4 +67,7 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
-    
+
+class TradeRequest(BaseModel):
+    ticker: str = Field(..., description="주식 종목 코드 (예: AAPL)")
+    quantity: int = Field(..., gt=0, description="구매할 수량(1 이상의 정수)")

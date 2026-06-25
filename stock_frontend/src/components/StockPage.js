@@ -9,6 +9,10 @@ function StockPage({ token, onRequireAuth }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    // 모의투자용 상태값
+    const [cashBalance, setCashBalance] = useState(10000000);
+    const [buyQuantity, setBuyQuantity] = useState(1);
+
     // 최근 검색어 및 인기검색어 및 즐겨찾기
     const [recentSearches, setRecentSearches] = useState([]);
     const [trendingSearches, setTrendingSearches] = useState([]);
@@ -37,6 +41,26 @@ function StockPage({ token, onRequireAuth }) {
     useEffect(()=>{
         fetchSidebarAndWatchlist();
     }, [fetchSidebarAndWatchlist]);
+
+    const fetchPortfolioInfo = useCallback(async () => {
+        if (!token) return; // 로그인이 안 되어 있으면 중단
+        try {
+            const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+            const res = await axios.get('http://127.0.0.1:8000/api/stocks/portfolio/info', authHeader);
+            
+            // 백엔드의 실제 잔액으로 갱신합니다!
+            setCashBalance(res.data.cash_balance); 
+        } catch (err) {
+            console.error('가상 자산 정보를 가져오는데 실패했습니다.', err);
+        }
+    }, [token]);
+
+    // 페이지가 처음 켜지거나, 로그인 상태(token)가 바뀔 때 자금 상태를 불러옴
+    useEffect(() => {
+        if (token) {
+            fetchPortfolioInfo();
+        }
+    }, [token, fetchPortfolioInfo]);
 
     const handleSearch = async () => {
         if (!ticker) return alert('종목을 입력해주세요 (예: AAPL)');
@@ -84,6 +108,37 @@ function StockPage({ token, onRequireAuth }) {
             fetchSidebarAndWatchlist(); // 좌측 리스트 갱신
         } catch (err) {
             alert(err.response?.data?.detail || '즐겨찾기 토글 실패');
+        }
+    };
+
+    // 주식 매수 주문을 요청하는 함수
+    const handleBuyStock = async () => {
+        if (!token) {
+            alert('모의투자는 로그인이 필요한 기능입니다.');
+            if (typeof onRequireAuth === 'function') onRequireAuth();
+            return;
+        }
+
+        if (!info || !info.ticker) {
+            alert('종목을 먼저 검색해 주세요.');
+            return;
+        }
+
+        try {
+            const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+            const payload = {
+                ticker: info.ticker,
+                quantity: parseInt(buyQuantity, 10)
+            };
+
+            const response = await axios.post('http://127.0.0.1:8000/api/stocks/portfolio/buy', payload, authHeader);
+            
+            alert(response.data.message);
+            setCashBalance(response.data.cash_balance); // 차감된 잔액 즉시 동기화
+            setBuyQuantity(1);
+        } catch (err) {
+            console.error('매수 주문 실패:', err.response?.data);
+            alert(err.response?.data?.detail || '매수 주문에 실패했습니다.');
         }
     };
 
@@ -272,6 +327,33 @@ function StockPage({ token, onRequireAuth }) {
                                 ))
                             )}
                         </ul>
+                    </div>
+
+                    {/* 모의투자*/}
+                    <div className="dashboard-stat-box mock-investment-box">
+                        <h5 className="dashboard-stat-title"> 가상 모의투자 (MVP)</h5>
+                        
+                        <div className="mock-investment-info">
+                            <p style={{ margin: '5px 0' }}>
+                                <strong>보유 자산:</strong> ${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </p>
+                            <p style={{ margin: '5px 0' }}>
+                                <strong>예상 결제액:</strong> ${( (info?.current_price || 0) * buyQuantity ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </p>
+                        </div>
+
+                        <div className="mock-investment-action">
+                            <input 
+                                type="number" 
+                                min="1" 
+                                value={buyQuantity} 
+                                onChange={(e) => setBuyQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="mock-quantity-input"
+                            />
+                            <button className="mock-buy-button" onClick={handleBuyStock}>
+                                매수하기
+                            </button>
+                        </div>
                     </div>
                 </div>{/* 우측 영억 끝 */}
 

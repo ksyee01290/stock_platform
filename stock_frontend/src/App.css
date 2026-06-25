@@ -471,3 +471,48 @@
   background-color: #e2e8f0;
   margin: 20px 0;
 }
+
+/* 모의투자 주문창 스타일*/
+.mock-investment-box {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #22c55e;
+    border-radius: 8px;
+    background-color: #f8fafc;
+}
+
+.mock-investment-info {
+    padding: 10px 0;
+    font-size: 14px;
+}
+
+.mock-investment-info p {
+    margin: 5px 0;
+}
+
+.mock-investment-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.mock-quantity-input {
+    width: 60px;
+    padding: 5px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.mock-buy-button {
+    flex: 1;
+    padding: 6px;
+    border: none;
+    border-radius: 4px;
+    background-color: #22c55e;
+    color: #ffffff;
+    font-weight: bold;
+    cursor: pointer;
+}
