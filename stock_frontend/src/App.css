@@ -516,3 +516,31 @@
     font-weight: bold;
     cursor: pointer;
 }
+
+/* 내 투자 현황 헤더 레이아웃 */
+.mock-portfolio-header {
+    display: flex;
+    justify-content: space-between; /* justify-content 값은 space-between이 정확합니다 */
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.mock-portfolio-title {
+    margin: 0;
+}
+
+/* 실시간 총 손익 금액 공통 스타일 */
+.mock-total-profit-loss {
+    font-size: 12px;
+    font-weight: bold;
+    color: #64748b;
+}
+
+/* 손익 상태에 따른 색상 분리 */
+.mock-total-profit-loss.profit {
+    color: #ef4444;
+}
+
+.mock-total-profit-loss.loss {
+    color: #3b82f6;
+}

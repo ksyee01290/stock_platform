@@ -12,6 +12,7 @@ function StockPage({ token, onRequireAuth }) {
     // 모의투자용 상태값
     const [cashBalance, setCashBalance] = useState(10000000);
     const [buyQuantity, setBuyQuantity] = useState(1);
+    const [myHoldings, setMyHoldings] = useState([]);
 
     // 최근 검색어 및 인기검색어 및 즐겨찾기
     const [recentSearches, setRecentSearches] = useState([]);
@@ -49,7 +50,8 @@ function StockPage({ token, onRequireAuth }) {
             const res = await axios.get('http://127.0.0.1:8000/api/stocks/portfolio/info', authHeader);
             
             // 백엔드의 실제 잔액으로 갱신합니다!
-            setCashBalance(res.data.cash_balance); 
+            setCashBalance(res.data.cash_balance);
+            setMyHoldings(res.data.holdings || []);
         } catch (err) {
             console.error('가상 자산 정보를 가져오는데 실패했습니다.', err);
         }
@@ -134,7 +136,7 @@ function StockPage({ token, onRequireAuth }) {
             const response = await axios.post('http://127.0.0.1:8000/api/stocks/portfolio/buy', payload, authHeader);
             
             alert(response.data.message);
-            setCashBalance(response.data.cash_balance); // 차감된 잔액 즉시 동기화
+            fetchPortfolioInfo();
             setBuyQuantity(1);
         } catch (err) {
             console.error('매수 주문 실패:', err.response?.data);
@@ -144,6 +146,17 @@ function StockPage({ token, onRequireAuth }) {
 
     const info = stockData?.data ? stockData.data : stockData;
     const isCurrentFavorite = watchlist.some(item => item.ticker === info?.ticker);
+
+    const calculateTotalProfitLoss = () => {
+        if (!myHoldings || myHoldings.length === 0) return 0;
+
+        return myHoldings.reduce((sum, item) => {
+            const currentVal = (item.current_price || 0) * item.quantity;
+            const purchaseVal = (item.average_price || 0) * item.quantity;
+            return sum + (currentVal - purchaseVal);
+        }, 0);
+    };
+    const totalProfitLossAmount = calculateTotalProfitLoss();
 
     // 52주 최고/최저가 대비 현재 가격 위치 백분율 계산 로직
     const calculatePosition = () => {
@@ -278,6 +291,72 @@ function StockPage({ token, onRequireAuth }) {
                             )}
                         </div>
                     </div>
+                    {token &&(
+                        <>
+                            {/* 모의투자*/}
+                            <div className="dashboard-stat-box mock-investment-box">
+                                <h5 className="dashboard-stat-title"> 가상 모의투자 (MVP)</h5>
+                                
+                                <div className="mock-investment-info">
+                                    <p><strong>보유 자산:</strong> ${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                    <p><strong>예상 결제액:</strong> ${( (info?.current_price || 0) * buyQuantity ).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                </div>
+
+                                <div className="mock-investment-action">
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        value={buyQuantity} 
+                                        onChange={(e) => setBuyQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="mock-quantity-input"
+                                    />
+                                    <button className="mock-buy-button" onClick={handleBuyStock}>
+                                        매수하기
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="dashboard-stat-box">
+                                <div className="mock-portfolio-header">
+                                    <h5 className="dashboard-stat-title mock-portfolio-title">내 투자 현황</h5>
+                                    <span className={`mock-total-profit-loss ${
+                                        totalProfitLossAmount > 0 ? 'profit' : totalProfitLossAmount < 0 ? 'loss' : ''
+                                        }`}>
+                                        {totalProfitLossAmount > 0 
+                                            ? `+$${totalProfitLossAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}` 
+                                            : `$${totalProfitLossAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                                        }
+                                    </span>
+                                </div>
+                                <div className="watchlist-list">
+                                    {myHoldings.length === 0 ? (
+                                        <p className="dashboard-no-data">보유 중인 주식이 없습니다.</p>
+                                    ) : (
+                                        myHoldings.map((item) => (
+                                            <div 
+                                                key={item.id} 
+                                                onClick={() => { setTicker(item.ticker); executeSearch(item.ticker); }} 
+                                                className="trending-rank-item watchlist-item-clickable"
+                                            >
+                                                <div>
+                                                    <span className="rank-ticker">{item.ticker}</span>
+                                                    <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '6px' }}>{item.quantity}주</span>
+                                                </div>
+                                                {/* 수익률 양수/음수에 따라 색상 조절 */}
+                                                <span style={{ 
+                                                    fontSize: '13px', 
+                                                    fontWeight: 'bold', 
+                                                    color: item.profit_loss_rate > 0 ? '#ef4444' : item.profit_loss_rate < 0 ? '#3b82f6' : '#64748b' 
+                                                }}>
+                                                    {item.profit_loss_rate > 0 ? `+${item.profit_loss_rate}` : item.profit_loss_rate}%
+                                                </span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     {/* 최근 검색한 종목 */}
                     <div className="dashboard-stat-box">
@@ -329,32 +408,6 @@ function StockPage({ token, onRequireAuth }) {
                         </ul>
                     </div>
 
-                    {/* 모의투자*/}
-                    <div className="dashboard-stat-box mock-investment-box">
-                        <h5 className="dashboard-stat-title"> 가상 모의투자 (MVP)</h5>
-                        
-                        <div className="mock-investment-info">
-                            <p style={{ margin: '5px 0' }}>
-                                <strong>보유 자산:</strong> ${cashBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </p>
-                            <p style={{ margin: '5px 0' }}>
-                                <strong>예상 결제액:</strong> ${( (info?.current_price || 0) * buyQuantity ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </p>
-                        </div>
-
-                        <div className="mock-investment-action">
-                            <input 
-                                type="number" 
-                                min="1" 
-                                value={buyQuantity} 
-                                onChange={(e) => setBuyQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                                className="mock-quantity-input"
-                            />
-                            <button className="mock-buy-button" onClick={handleBuyStock}>
-                                매수하기
-                            </button>
-                        </div>
-                    </div>
                 </div>{/* 우측 영억 끝 */}
 
             </div>{/* 메인 레이아웃 끝 */}
