@@ -37,15 +37,6 @@ def calculate_stock_score(current_price, high_52week, low_52week):
 @router.get("/integrated/{ticker}", response_model=schemas.IntegratedStockResponse)
 def get_stock_history(ticker: str, db: Session = Depends(get_db)):
     ticker = ticker.upper() # 대문자 변환 (aapl -> AAPL)
-    
-    # 검색 히스토리 로그 적재 (독립 트랜잭션 분리)
-    try:
-        search_log = models.SearchHistory(ticker=ticker)
-        db.add(search_log)
-        db.commit()
-    except Exception as log_error:
-        print(f"[Search Log Error] 검색 히스토리 적재 실패: {str(log_error)}")
-        db.rollback()
         
     # DB 에서 마스터 주식 종목 조회
     existing_stock = db.query(models.Stock).filter(models.Stock.ticker == ticker).first()
@@ -100,7 +91,6 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
                 if history_items:
                     db.bulk_save_objects(history_items)
             
-            
             db.commit()
             db.refresh(existing_stock)
             print(f"[On-Demand 수집 완료] {ticker} 종목 등록 및 1년 치 데이터 적재 성공!")
@@ -112,6 +102,14 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
             db.rollback()
             print(f"[On-Demand 에러 발생 인쇄] 구체적 에러 내용: {str(e)}")
             raise HTTPException(status_code=500,)
+        
+    try:
+        search_log = models.SearchHistory(ticker=ticker)
+        db.add(search_log)
+        db.commit()
+    except Exception as log_error:
+        print(f"[Search Log Error] 검색 히스토리 적재 실패: {str(log_error)}")
+        db.rollback()
         
     # 1년 치 차트 데이터 선행 조회
     today = date.today()
@@ -368,3 +366,34 @@ def buy_stock(
         "message": f"{stock.name}({ticker_upper}) {request.quantity}주 매수가 완료되었습니다!",
         "cash_balance": current_user.cash_balance
     }
+    
+@router.get("/search/suggest")
+def get_stock_suggestions(q: str = "", db: Session = Depends(get_db)):
+    """
+    [주식 검색 자동완성 제안 API]
+    - 사용자가 입력한 검색어(q)를 기준으로 종목코드 또는 회사명(name)에서
+      유사한 종목을 최대 5개까지 찾아 반환합니다.
+    """
+    if not q or len(q.strip()) == 0:
+        return []
+
+    search_query = f"%{q.strip().upper()}%"
+    
+    suggestions = db.query(
+        models.Stock.ticker,
+        models.Stock.name,
+        models.Stock.current_price
+    ).filter(
+        (models.Stock.ticker.like(search_query)) | 
+        (func.upper(models.Stock.name).like(search_query))
+    ).limit(5).all()
+    
+    result = []
+    for item in suggestions:
+        result.append({
+            "ticker": item[0],         # models.Stock.ticker
+            "name": item[1],           # models.Stock.name
+            "current_price": item[2]   # models.Stock.current_price
+        })
+        
+    return result

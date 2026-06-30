@@ -5,6 +5,7 @@ import '../App.css';
 
 function StockPage({ token, onRequireAuth }) {
     const [ticker, setTicker] = useState('');
+    const [suggestions, setSuggestions] = useState([]);
     const [stockData, setStockData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -69,13 +70,30 @@ function StockPage({ token, onRequireAuth }) {
         await executeSearch(ticker);
     };
 
+    const handleInputChange = async (e) => {
+        const val = e.target.value;
+        setTicker(val);
+
+        if (!val || val.trim() === '') {
+            setSuggestions([]);
+            return;
+        }
+
+        try {
+            const res = await axios.get(`http://127.0.0.1:8000/api/stocks/search/suggest?q=${val}`);
+            setSuggestions(res.data || []);
+        } catch (err) {
+            console.error('검색 추천 목록 조회 실패:', err);
+        }
+    };
+
     // 최근 검색어나 인기 순위를 클릭했을때도 동작할 공통 검색 로직
     const executeSearch = async(targetTicker) =>{
         if (!targetTicker) return;
         setLoading(true);
         
         try {
-            const cleanTicker = targetTicker.toUpperCase();
+            const cleanTicker = targetTicker.trim();
             const response = await axios.get(`http://127.0.0.1:8000/api/stocks/integrated/${cleanTicker}`);
             setError(null);
             setStockData(response.data);
@@ -105,7 +123,7 @@ function StockPage({ token, onRequireAuth }) {
 
         try {
             const authHeader = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await axios.post(`http://127.0.0.1:8000/api/stocks/watchlist/${targetTicker.toUpperCase()}`, {}, authHeader);
+            const response = await axios.post(`http://127.0.0.1:8000/api/stocks/watchlist/${targetTicker.trim()}`, {}, authHeader);
             alert(response.data.message);
             fetchSidebarAndWatchlist(); // 좌측 리스트 갱신
         } catch (err) {
@@ -177,13 +195,46 @@ function StockPage({ token, onRequireAuth }) {
                 <input
                     type="text"
                     value={ticker}
-                    onChange={(e) => setTicker(e.target.value.toUpperCase())}
                     placeholder="종목 입력 (예: AAPL)"
                     className="search-input"
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            handleSearch();
+                            setSuggestions([]);
+                        }
+                    }}
                 />
                 <button onClick={handleSearch} className="search-button" disabled={loading}>
                     {loading ? '조회 중...' : '조회'}
                 </button>
+
+                {/*실시간 자동완성 추천 결과가 있을 때만 활성화*/}
+                {suggestions.length > 0 && (
+                    <div className="search-suggest-dropdown">
+                        {suggestions.map((item) => (
+                            <div
+                                key={item.ticker}
+                                onClick={() => {
+                                    setTicker(item.ticker);
+                                    setTimeout(() => {
+                                        handleSearch();
+                                    }, 0);
+                                    setSuggestions([]);
+                                }}
+                                className="search-suggest-item"
+                            >
+                                <div>
+                                    <span className="rank-ticker" style={{ fontWeight: 'bold' }}>{item.ticker}</span>
+                                    <span className="search-suggest-name">{item.name}</span>
+                                </div>
+                                <span className="search-suggest-price">
+                                    ${item.current_price?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {error && <p className="error-text-message"> 에러: {error}</p>}
@@ -370,7 +421,7 @@ function StockPage({ token, onRequireAuth }) {
                                         key={idx}
                                         onClick={() => {
                                             setTicker(item.ticker);
-                                            executeSearch(item.ticker);
+                                            setTimeout(() => { handleSearch(); }, 0);
                                         }}
                                         className="recent-ticker-badge"
                                     >
