@@ -3,6 +3,7 @@
 - 유저 요청과 무관하게 뒤에서 10분마다 자동으로 호출.
 - [변경사항] 기본 정보뿐 아니라 현재가(current_price)를 동기화하고, 차트용 stockhistory 스냅샷을 주기적으로 누적
 """
+import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 import yfinance as yf
@@ -10,6 +11,8 @@ from datetime import datetime
 
 from app.database import SessionLocal
 from app.stocks import models
+
+logger = logging.getLogger(__name__)
 
 def update_top_stocks_batch():
     """
@@ -51,10 +54,10 @@ def update_top_stocks_batch():
                                 volume=int(row.get('Volume') or 0)
                             )
                             history_items.append(history_entry)
-                            
-                            if history_items:
-                                db.bulk_save_objects(history_items)
-                                print(f"[Initial Seed] {stock.ticker} 과거 데이터 {len(history_items)}건 적재 성공")
+
+                        if history_items:
+                            db.bulk_save_objects(history_items)
+                            logger.info("[Initial Seed] %s 과거 데이터 %d건 적재", stock.ticker, len(history_items))
                                 
                                 
                 info = ticker_data.info
@@ -85,17 +88,17 @@ def update_top_stocks_batch():
                 
                 print(f"[Batch] {stock.ticker} 정보 갱신 및 10분 단위 스냅샷({live_price}원) 적재 완료")
                 
-            except Exception as item_error:
-                print(f"[Batch] {stock.ticker} 갱신 중 개별 오류 발생: {str(item_error)}")
+            except Exception:
+                logger.exception("[Batch] %s 갱신 중 개별 오류 발생", stock.ticker)
                 continue
             
         db.commit()
         print("[Batch] 모든 종목 배치 갱신 완료 및 DB 저장 성공")
         
-    except Exception as e:
+    except Exception:
         db.rollback()
-        print(f"[Batch] 시스템 치명적 오류 발생: {str(e)}")
-        
+        logger.exception("[Batch] 시스템 치명적 오류 발생")
+
     finally:
         db.close()
         

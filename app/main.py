@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.stocks.router import router as stock_router
@@ -8,6 +10,11 @@ from app.stocks import models
 
 from contextlib import asynccontextmanager
 from app.tasks.stock_tasks import start_scheduler, shutdown_scheduler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
 #  테이블구조 날려버리기
 # Base.metadata.drop_all(bind=engine)
