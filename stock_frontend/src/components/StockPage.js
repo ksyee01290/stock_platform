@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import apiClient, { getAuthHeader } from '../utils/api';
 import StockChart from '../StockChart';
 import '../App.css';
 
@@ -23,14 +23,13 @@ function StockPage({ token, onRequireAuth }) {
     // 백엔드 사이드바 통계 데이터
     const fetchSidebarAndWatchlist = useCallback(async () =>{
         try{
-            const dashboardRes = await axios.get('http://127.0.0.1:8000/api/stocks/search/dashboard-init');
+            const dashboardRes = await apiClient.get('/api/stocks/search/dashboard-init');
             const { recent, trending } = dashboardRes.data;
             if (recent && Array.isArray(recent)) setRecentSearches(recent);
             if (trending && Array.isArray(trending)) setTrendingSearches(trending);
 
             if (token) {
-                const authHeader = { headers: { Authorization: `Bearer ${token}` } };
-                const watchlistRes = await axios.get('http://127.0.0.1:8000/api/stocks/watchlist', authHeader);
+                const watchlistRes = await apiClient.get('/api/stocks/watchlist', getAuthHeader(token));
                 setWatchlist(watchlistRes.data);
             } else {
                 setWatchlist([]);
@@ -47,8 +46,7 @@ function StockPage({ token, onRequireAuth }) {
     const fetchPortfolioInfo = useCallback(async () => {
         if (!token) return; // 로그인이 안 되어 있으면 중단
         try {
-            const authHeader = { headers: { Authorization: `Bearer ${token}` } };
-            const res = await axios.get('http://127.0.0.1:8000/api/stocks/portfolio/info', authHeader);
+            const res = await apiClient.get('/api/stocks/portfolio/info', getAuthHeader(token));
             
             // 백엔드의 실제 잔액으로 갱신합니다!
             setCashBalance(res.data.cash_balance);
@@ -80,7 +78,7 @@ function StockPage({ token, onRequireAuth }) {
         }
 
         try {
-            const res = await axios.get(`http://127.0.0.1:8000/api/stocks/search/suggest?q=${val}`);
+            const res = await apiClient.get(`/api/stocks/search/suggest?q=${val}`);
             setSuggestions(res.data || []);
         } catch (err) {
             console.error('검색 추천 목록 조회 실패:', err);
@@ -94,7 +92,7 @@ function StockPage({ token, onRequireAuth }) {
         
         try {
             const cleanTicker = targetTicker.trim();
-            const response = await axios.get(`http://127.0.0.1:8000/api/stocks/integrated/${cleanTicker}`);
+            const response = await apiClient.get(`/api/stocks/integrated/${cleanTicker}`);
             setError(null);
             setStockData(response.data);
             fetchSidebarAndWatchlist();
@@ -122,8 +120,7 @@ function StockPage({ token, onRequireAuth }) {
         }
 
         try {
-            const authHeader = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await axios.post(`http://127.0.0.1:8000/api/stocks/watchlist/${targetTicker.trim()}`, {}, authHeader);
+            const response = await apiClient.post(`/api/stocks/watchlist/${targetTicker.trim()}`, {}, getAuthHeader(token));
             alert(response.data.message);
             fetchSidebarAndWatchlist(); // 좌측 리스트 갱신
         } catch (err) {
@@ -145,13 +142,12 @@ function StockPage({ token, onRequireAuth }) {
         }
 
         try {
-            const authHeader = { headers: { Authorization: `Bearer ${token}` } };
             const payload = {
                 ticker: info.ticker,
                 quantity: parseInt(buyQuantity, 10)
             };
 
-            const response = await axios.post('http://127.0.0.1:8000/api/stocks/portfolio/buy', payload, authHeader);
+            const response = await apiClient.post('/api/stocks/portfolio/buy', payload, getAuthHeader(token));
             
             alert(response.data.message);
             fetchPortfolioInfo();
