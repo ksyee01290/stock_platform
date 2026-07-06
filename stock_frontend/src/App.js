@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import StockPage from './components/StockPage';
-import axios from 'axios';
+import apiClient from './utils/api';
 import './App.css';
 
 function App() {
@@ -14,7 +14,7 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/auth/login', { 
+      const response = await apiClient.post('/api/auth/login', { 
         username: username, 
         password: password 
       });
@@ -33,7 +33,7 @@ function App() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://127.0.0.1:8000/api/auth/signup', { 
+      await apiClient.post('/api/auth/signup', { 
         username: username, 
         password: password 
       });

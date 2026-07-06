@@ -10,6 +10,10 @@ from datetime import datetime
 
 from app.database import SessionLocal
 from app.stocks import models
+from app.stocks.services import (
+    build_history_from_dataframe,
+    update_stock_fields,
+)
 
 def update_top_stocks_batch():
     """
@@ -35,26 +39,10 @@ def update_top_stocks_batch():
                 if not history_exists:
                     print(f"[Initial Seed] {stock.ticker} 종목의 과거 1년치 일봉 데이터를 수집합니다...")
                     hist_df = ticker_data.history(period="1y")
-                    
-                    if hist_df is not None and not hist_df.empty:
-                        history_items = []
-                        for index, row in hist_df.iterrows():
-                            list_date = index.date() if hasattr(index, 'date') else index
-
-                            history_entry = models.StockHistory(
-                                ticker=stock.ticker,
-                                list_date=list_date,
-                                open_price=float(row.get('Open') or 0.0),
-                                high_price=float(row.get('High') or 0.0),
-                                low_price=float(row.get('Low') or 0.0),
-                                close_price=float(row.get('Close') or 0.0),
-                                volume=int(row.get('Volume') or 0)
-                            )
-                            history_items.append(history_entry)
-                            
-                            if history_items:
-                                db.bulk_save_objects(history_items)
-                                print(f"[Initial Seed] {stock.ticker} 과거 데이터 {len(history_items)}건 적재 성공")
+                    history_items = build_history_from_dataframe(stock.ticker, hist_df)
+                    if history_items:
+                        db.bulk_save_objects(history_items)
+                        print(f"[Initial Seed] {stock.ticker} 과거 데이터 {len(history_items)}건 적재 성공")
                                 
                                 
                 info = ticker_data.info
@@ -63,14 +51,8 @@ def update_top_stocks_batch():
                     print(f"[Batch] {stock.ticker} 데이터를 가져오지 못해 건너뜁니다.")
                     continue
                 
-                live_price = info.get("currentPrice") or info.get("regularMarketPrice") or stock.current_price
-                
-                stock.name= info.get("shortName") or info.get("longName") or stock.name
-                stock.current_price = float(live_price)
-                stock.market_cap = info.get("marketCap") or stock.market_cap
-                stock.high_52week = info.get("fiftyTwoWeekHigh") or stock.high_52week
-                stock.low_52week = info.get("fiftyTwoWeekLow") or stock.low_52week
-                stock.updated_at = datetime.now()
+                update_stock_fields(stock, info)
+                live_price = stock.current_price
                 
                 history_entry = models.StockHistory(
                     ticker=stock.ticker,

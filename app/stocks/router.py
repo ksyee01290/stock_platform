@@ -3,7 +3,6 @@
 - Frontend(React/Next.js)의 API 요청을 수신하는 문지기 역할을 합니다.
 - [변경사항] 외부 API(yfinance) 호출 및 동시성 락(Lock) 을 제거하고, DB데이터를 즉시 투입
 """
-import math
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -13,6 +12,11 @@ import yfinance as yf
 from app.auth.router import get_current_user
 from app.stocks.models import User
 from app.stocks import models, schemas
+from app.stocks.services import (
+    extract_live_price,
+    extract_stock_name,
+    build_history_from_dataframe,
+)
 from app.database import get_db
 
 router = APIRouter()
@@ -52,12 +56,12 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
             
             if not stock_info or ("regularMarketPrice" not in stock_info and "currentPrice" not in stock_info):
                 raise HTTPException(status_code=404, detail=f"존재하지 않는 야후 파이낸스 입니다: {ticker}")
-            live_price = stock_info.get("currentPrice") or stock_info.get("regularMarketPrice") or 0.0
+            live_price = extract_live_price(stock_info)
             
             existing_stock = models.Stock(
                 ticker=ticker,
-                name=stock_info.get("shortName") or stock_info.get("longName") or ticker,
-                current_price=float(live_price),
+                name=extract_stock_name(stock_info, fallback=ticker),
+                current_price=live_price,
                 market_cap=stock_info.get("marketCap"),
                 high_52week=stock_info.get("fiftyTwoWeekHigh"),
                 low_52week=stock_info.get("fiftyTwoWeekLow"),
@@ -67,29 +71,9 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
             db.commit()
             
             hist_df = yf_ticker.history(period="1y")
-            if hist_df is not None and not hist_df.empty:
-                history_items = []
-                for index, row in hist_df.iterrows():
-                    list_date = index.date() if hasattr(index, 'date') else index
-                    
-                    o_price = row.get('Open') if not math.isnan(float(row.get('Open', 0))) else live_price
-                    h_price = row.get('High') if not math.isnan(float(row.get('High', 0))) else live_price
-                    l_price = row.get('Low') if not math.isnan(float(row.get('Low', 0))) else live_price
-                    c_price = row.get('Close') if not math.isnan(float(row.get('Close', 0))) else live_price
-                    
-                    history_log = models.StockHistory(
-                        ticker=ticker,
-                        list_date=list_date,
-                        open_price=float(o_price),
-                        high_price=float(h_price),
-                        low_price=float(l_price),
-                        close_price=float(c_price),
-                        volume=int(row.get('Volume') or 0)
-                    )
-                    history_items.append(history_log)
-                
-                if history_items:
-                    db.bulk_save_objects(history_items)
+            history_items = build_history_from_dataframe(ticker, hist_df, fallback_price=live_price)
+            if history_items:
+                db.bulk_save_objects(history_items)
             
             db.commit()
             db.refresh(existing_stock)
