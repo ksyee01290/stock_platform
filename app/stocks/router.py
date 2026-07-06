@@ -3,6 +3,7 @@
 - Frontend(React/Next.js)의 API 요청을 수신하는 문지기 역할을 합니다.
 - [변경사항] 외부 API(yfinance) 호출 및 동시성 락(Lock) 을 제거하고, DB데이터를 즉시 투입
 """
+import logging
 import math
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -14,6 +15,8 @@ from app.auth.router import get_current_user
 from app.stocks.models import User
 from app.stocks import models, schemas
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -30,7 +33,9 @@ def calculate_stock_score(current_price, high_52week, low_52week):
             return score, "보통 (적정가)", f"현재 주가는 중간 지점({score}점)에 위치해 있으며, 시장의 평균적인 흐름을 따르고 있습니다."
         else:
             return score, "위험 (고점 과열)", f"현재 주가가 52주 최고가에 근접({score}점)했습니다. 고점 과열 상태일 수 있으니 유의하세요."
-    except:
+    except (TypeError, ValueError, ZeroDivisionError) as calc_error:
+        logger.warning("주가 점수 연산 실패 (current=%s, high=%s, low=%s): %s",
+                       current_price, high_52week, low_52week, calc_error)
         return 50, "오류 발생", "점수 연산 중 문제가 발생했습니다."
     
 
@@ -100,15 +105,18 @@ def get_stock_history(ticker: str, db: Session = Depends(get_db)):
             raise http_err
         except Exception as e:
             db.rollback()
-            print(f"[On-Demand 에러 발생 인쇄] 구체적 에러 내용: {str(e)}")
-            raise HTTPException(status_code=500,)
+            logger.exception("[On-Demand] %s 종목 수집 중 오류 발생", ticker)
+            raise HTTPException(
+                status_code=500,
+                detail=f"{ticker} 종목 데이터를 수집하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+            ) from e
         
     try:
         search_log = models.SearchHistory(ticker=ticker)
         db.add(search_log)
         db.commit()
-    except Exception as log_error:
-        print(f"[Search Log Error] 검색 히스토리 적재 실패: {str(log_error)}")
+    except Exception:
+        logger.warning("[Search Log] 검색 히스토리 적재 실패: %s", ticker, exc_info=True)
         db.rollback()
         
     # 1년 치 차트 데이터 선행 조회
