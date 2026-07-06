@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.stocks.router import router as stock_router
@@ -26,9 +28,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title= "주식 분석 플랫폼", lifespan=lifespan)
 
+# 허용할 프론트엔드 출처(origin)를 환경변수(CORS_ALLOW_ORIGINS, 콤마 구분)에서 읽어옵니다.
+# credentials(쿠키/인증 헤더)를 허용하는 경우 와일드카드("*")는 브라우저가 거부하므로
+# 명시적인 출처 목록만 사용합니다.
+_default_origins = "http://localhost:3000,http://127.0.0.1:3000"
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ALLOW_ORIGINS", _default_origins).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
