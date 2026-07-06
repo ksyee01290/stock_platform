@@ -9,3 +9,8 @@ __pycache__/
 local_stock.db
 
 study.txt
+
+# test / coverage artifacts
+.coverage
+htmlcov/
+.pytest_cache/
